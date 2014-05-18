@@ -6,7 +6,6 @@
  */
 
 //#include <assert.h>
-//#include <errno.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
@@ -17,7 +16,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <itskylib.h>
+#include <serverlib.h>
 #include <logger.h>
 #include <transmission-protocols.h>
 
@@ -33,7 +32,7 @@ struct thread_arg {
 void *thread_run(void *ptr);
 
 void usage(char *argv0, char *msg) {
-	printf("%s\n\n", msg);
+	error("%s\n\n", msg);
 	printf("Usage:\n\n");
 
 	printf("starts the file server listening on the given port\n");
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
 
 	char *argv0 = argv[0];
 	if (argc != 2) {
-		printf("found %d arguments\n", argc - 1);
+		debug("found %d arguments\n", argc - 1);
 		usage(argv0, "wrong number of arguments");
 	}
 

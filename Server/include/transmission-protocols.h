@@ -5,8 +5,8 @@
  * License: GPL v2 (See https://de.wikipedia.org/wiki/GNU_General_Public_License )
  */
 
-#ifndef _LIB_ITSKY_TRANSMISSION_PROTOCOLS
-#define _LIB_ITSKY_TRANSMISSION_PROTOCOLS
+#ifndef _PROTOCOL_H
+#define _PROTOCOL_H
 
 typedef void (*consumer_function)(const char *buff, size_t count);
 

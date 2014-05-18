@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>     /* for close() */
 
-#include <itskylib.h>
+#include <serverlib.h>
 #include <transmission-protocols.h>
 
 const char *EMPTY_BUFFER = "";
