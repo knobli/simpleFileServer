@@ -25,7 +25,7 @@ void debug(const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("DEBUG", message);
+	log("DEBUG", logLine);
 }
 
 void info(const char* message, ...) {
@@ -34,7 +34,7 @@ void info(const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("INFO", message);
+	log("INFO", logLine);
 }
 
 void warn(const char* message, ...) {
@@ -43,7 +43,7 @@ void warn(const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("WARN", message);
+	log("WARN", logLine);
 }
 
 void error(const char* message, ...) {
@@ -52,5 +52,5 @@ void error(const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("ERROR", message);
+	log("ERROR", logLine);
 }
