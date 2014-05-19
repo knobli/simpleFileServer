@@ -8,6 +8,25 @@
 #ifndef _PROTOCOL_H
 #define _PROTOCOL_H
 
+#define COMMAND_LIST 'L'
+#define COMMAND_CREATE 'C'
+#define COMMAND_READ 'R'
+#define COMMAND_UPDATE 'U'
+#define COMMAND_DELETE 'D'
+
+#define ANSWER_SUCCESS_LIST "ACK"
+#define ANSWER_FAILED_CREATE "FILEEXISTS\n"
+#define ANSWER_SUCCESS_CREATE "FILECREATED\n"
+#define ANSWER_FAILED_READ "NOSUCHFILE\n"
+#define ANSWER_SUCCESS_READ "FILECONTENT __FILENAME__\n"
+#define ANSWER_FAILED_UPDATE "NOSUCHFILE\n"
+#define ANSWER_SUCCESS_UPDATE "UPDATED\n"
+#define ANSWER_FAILED_DELETE "NOSUCHFILE\n"
+#define ANSWER_SUCCESS_DELETE "DELETED\n"
+#define ANSWER_UNKOWN "UNKOWN\n"
+
+#define MAX_MESSAGE_LEN 2500
+
 typedef void (*consumer_function)(const char *buff, size_t count);
 
 
@@ -20,22 +39,12 @@ typedef void (*consumer_function)(const char *buff, size_t count);
  * @param str string to be transmitted
  * @param len length of string to be transmitted
  */
-void write_string(int client_socket, char *str, size_t len);
+void write_string(int client_socket, char *str);
 
 void write_eot(int client_socket);
 
-size_t read_string_fragmentable(int client_socket, char *buffer, size_t buffer_size, consumer_function consume);
-
-size_t read_string(int client_socket, consumer_function consume);
-
 /* the caller has to free the buffer, unless ulen == 0 */
 size_t read_and_store_string(int client_socket, char **result);
-
-void free_read_string(size_t ulen, char *buffer);
-
-void write_4byte_string(int client_socket, const char *str);
-
-void read_4byte_string(int client_socket, char *str);
 
 
 #endif

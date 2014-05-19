@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #define MAX_MSG_LEN 1024
@@ -16,7 +17,8 @@
 void log(const char* tag, const char* message) {
 	time_t now;
 	time(&now);
-	printf("%s [%s]: %s\n", ctime(&now), tag, message);
+	char *timestamp = strtok(ctime(&now), "\n");
+	printf("%s [%s]: %s\n", timestamp, tag, message);
 }
 
 void debug(const char* message, ...) {

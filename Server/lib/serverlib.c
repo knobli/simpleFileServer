@@ -54,7 +54,7 @@ void handle_error_myerrno(long return_code, int myerrno, const char *msg, enum e
     } else {
       extra_msg[0] = '\000';
     }
-    sprintf(error_msg, "%sreturn_code=%ld\nerrno=%d\nmessage=%s\n", extra_msg, return_code, myerrno, error_str);
+    sprintf(error_msg, "return_code=%ld | message=%s\nerror=%s\n", return_code, error_str, extra_msg);
     write(STDOUT_FILENO, error_msg, strlen(error_msg));
     exit_by_type(et);
   }

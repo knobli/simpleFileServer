@@ -23,6 +23,7 @@
 #include <unistd.h>     /* for close() */
 
 #include <serverlib.h>
+#include <logger.h>
 #include <transmission-protocols.h>
 
 const char *EMPTY_BUFFER = "";
@@ -36,133 +37,42 @@ const char *EMPTY_BUFFER = "";
  * @param str string to be transmitted
  * @param len length of string to be transmitted
  */
-void write_string(int client_socket, char *str, size_t len) {
-  if (len == -1) {
-    len = strlen(str);
-  }
-  uint32_t ulen = (uint32_t) len;
-  if (ulen != len) {
-    handle_error_myerrno(-1, EFBIG, "string too long", THREAD_EXIT);
-  }
-  uint32_t ulen_net = htonl(ulen);
-  write(client_socket, &ulen_net, sizeof(ulen_net));
-  char *ptr = str;
-  size_t rest_len = len;
-  while (rest_len > 0) {
-    size_t partial_len = write(client_socket, ptr, rest_len);
-    rest_len -= partial_len;
-    ptr += partial_len;
-  }
+void write_string(int client_socket, char *str) {
+	int len = strlen(str);
+
+	int send_len = write(client_socket, &str, len);
+	handle_error(send_len, "could not write", THREAD_EXIT);
+
+	if(send_len != len){
+		error("Write to client socket failed");
+		exit_by_type(THREAD_EXIT);
+	}
 }
 
 void write_eot(int client_socket) {
-  write_string(client_socket, "", 0);
+	write_string(client_socket, "");
 }
-
-
-size_t read_string_fragmentable(int client_socket, char *buffer, size_t buffer_size, consumer_function consume) {
-    uint32_t ulen_net = 0;
-    size_t bytes_received = read(client_socket, &ulen_net, sizeof(ulen_net));
-    if (bytes_received != sizeof(ulen_net)) {
-      die_with_error("recv() failed or connection closed prematurely");
-    }
-
-    uint32_t ulen = ntohl(ulen_net);
-    if (ulen == 0) {
-      return ulen;
-    }
-
-    size_t rest_len = ulen;
-    while (rest_len > 0) {
-      size_t read_len = rest_len;
-      if (read_len > buffer_size) {
-        read_len = buffer_size;
-      }
-      /* Receive up to the read_len bytes from the sender */
-      bytes_received = read(client_socket, buffer, read_len);
-      if (bytes_received <= 0) {
-        die_with_error("recv() failed or connection closed prematurely");
-      }
-      consume(buffer, bytes_received);
-      rest_len -= bytes_received;
-    }
-    return ulen;
-}
-
-size_t read_string(int client_socket, consumer_function consume) {
-  char *buffer_ptr[1];
-  uint32_t ulen = read_and_store_string(client_socket, buffer_ptr);
-  if (ulen == 0) {
-    return ulen;
-  }
-  char *buffer = *buffer_ptr;
-  consume(buffer, ulen);
-  free(buffer);
-  return ulen;
-}
-
 
 /* the caller has to free the buffer, unless ulen == 0 */
 size_t read_and_store_string(int client_socket, char **result) {
-    uint32_t ulen_net = 0;
-    size_t bytes_received = recv(client_socket, &ulen_net, sizeof(ulen_net), 0);
-    if (bytes_received != sizeof(ulen_net)) {
-      printf("recv() failed or connection closed prematurely");
-      return 0;
-    }
+	char buffer[MAX_MESSAGE_LEN + 1];
+	size_t bytes_received = 0;
 
-    uint32_t ulen = ntohl(ulen_net);
-    // printf("ulen=%d\n");
-    if (ulen == 0) {
-      *result = (char *) EMPTY_BUFFER; /* actually the same as empty string */
-      return ulen;
-    }
-    char *buffer = (char *) malloc(ulen + 1);
-    buffer[ulen] = '\000';
-    char *ptr = buffer;
-    size_t rest_len = ulen;
-    while (rest_len > 0) {
-      /* Receive up to the read_len bytes from the sender */
-      bytes_received = read(client_socket, ptr, rest_len);
-      if (bytes_received <= 0) {
-        die_with_error("recv() failed or connection closed prematurely");
-      }
-      rest_len -= bytes_received;
-      ptr += bytes_received;
-    }
-    *result = buffer;
-    return ulen;
-}
+	debug("Read from client socket");
+	bytes_received = read(client_socket, buffer, MAX_MESSAGE_LEN);
+	handle_error(bytes_received,
+			"recv() failed or connection closed prematurely", THREAD_EXIT);
+	debug("Received bytes: %zu", bytes_received);
 
-void free_read_string(size_t ulen, char *buffer) {
-  if (ulen != 0) {
-    free(buffer);
-  }
-}
+	if (bytes_received == 0) {
+		debug("Return empty buffer");
+		*result = (char *) EMPTY_BUFFER; /* actually the same as empty string */
+		return bytes_received;
+	}
 
-/*
- * use 4 byte long strings as a simple communication command language.
- * actually 5 bytes are transmitted, because the 0 as termination is included.
- */
-void write_4byte_string(int client_socket, const char *str) {
-  char buff[5] = { '\000' };
-  sprintf(buff, "%s", str);
-  size_t count = write(client_socket, buff, 5);
-  if (count != 5) {
-    die_with_error("write() sent a different number of bytes than expected");
-  }
-}
-  
-/*
- * use 4 byte long strings as a simple communication command language.
- * actually 5 bytes are transmitted, because the 0 as termination is included.
- */
-void read_4byte_string(int client_socket, char *str) {
-  char buff[5] = { '\000' };
-  size_t count = read(client_socket, buff, 5);
-  if (count != 5) {
-    die_with_error("read() received a different number of bytes than expected");
-  }
+	buffer[bytes_received] = '\000';
 
-  memcpy(str, buff, 5);
+	*result = (char *) malloc(bytes_received + 1);
+	strncpy(*result, buffer, bytes_received + 1);
+	return bytes_received;
 }

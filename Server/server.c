@@ -31,8 +31,14 @@ struct thread_arg {
 
 void *thread_run(void *ptr);
 
+void create_file(char *filename, char *content, char *result);
+void update_file(char *filename, char *content, char *result);
+void delete_file(char *filename, char *result);
+void read_file(char *filename, char *result);
+void list_files(char *result);
+
 void usage(char *argv0, char *msg) {
-	error("%s\n\n", msg);
+	error("%s\n", msg);
 	printf("Usage:\n\n");
 
 	printf("starts the file server listening on the given port\n");
@@ -48,7 +54,7 @@ int main(int argc, char *argv[]) {
 
 	char *argv0 = argv[0];
 	if (argc != 2) {
-		debug("found %d arguments\n", argc - 1);
+		debug("found %d arguments", argc - 1);
 		usage(argv0, "wrong number of arguments");
 	}
 
@@ -59,7 +65,9 @@ int main(int argc, char *argv[]) {
 	int client_socket; /* Socket descriptor for client */
 	struct sockaddr_in server_address; /* Local address */
 	struct sockaddr_in client_address; /* Client address */
-	unsigned int client_address_len; /* Length of client address data structure */
+	/* Length of client address data structure */
+	/* Set the size of the in-out parameter */
+	unsigned int client_address_len = sizeof(client_address);
 
 	/* Create socket for incoming connections */
 	debug("Create socket");
@@ -86,16 +94,13 @@ int main(int argc, char *argv[]) {
 
 	int idx = 0;
 	while (TRUE) { /* Run forever */
-		/* Set the size of the in-out parameter */
-		client_address_len = sizeof(client_address);
-
 		/* Wait for a client to connect */
 		client_socket = accept(server_socket,
 				(struct sockaddr *) &client_address, &client_address_len);
 		handle_error(client_socket, "accept() failed", PROCESS_EXIT);
 
 		/* client_socket is connected to a client! */
-		printf("Client connected\n");
+		info("Client connected");
 
 		thread = (pthread_t *) malloc(sizeof(pthread_t));
 		struct thread_arg *thread_data = (struct thread_arg *) malloc(
@@ -107,10 +112,9 @@ int main(int argc, char *argv[]) {
 		/* create thread: */
 		if (pthread_create(thread, NULL, (void*) thread_run,
 				(void*) thread_data) != 0) {
-			fprintf(stderr, "pthread_create failed.\n");
+			error("pthread_create failed");
 		} else {
-			fprintf(stdout, "pthread_create success.\n");
-			pthread_detach(*thread);
+			info("pthread_create success");
 		}
 
 		idx++;
@@ -126,16 +130,72 @@ void *thread_run(void *ptr) {
 	debug("Client socket: %d", client_socket);
 	debug("Thread index: %d", arg->thread_idx);
 
-	info("Select strategy");
+	char *buffer_ptr[0];
+	info("Receive message from client");
+	size_t msg_length = read_and_store_string(client_socket, buffer_ptr);
+	handle_error(msg_length, "receive failed", THREAD_EXIT);
 
-	char* eom = "THE END";
-	int len = strlen(eom);
-	write_string(client_socket, eom, len);
+	debug("Received string: '%s'", *buffer_ptr);
+	info("Select strategy");
+	char *actionPointer = buffer_ptr[0];
+	unsigned char action = actionPointer[0];
+
+	char *filename = "testFile";
+	char *content = "blablabla";
+	char result[100];
+	switch (action) {
+	case COMMAND_CREATE:
+		create_file(filename, content, result);
+		break;
+	case COMMAND_UPDATE:
+		update_file(filename, content, result);
+		break;
+	case COMMAND_DELETE:
+		delete_file(filename, result);
+		break;
+	case COMMAND_READ:
+		read_file(filename, result);
+		break;
+	case COMMAND_LIST:
+		list_files(result);
+		break;
+	default:
+		error("Wrong action %s", action);
+	}
+
+	debug("Return value: %s", result);
+
+	write_string(client_socket, result);
 
 	write_eot(client_socket);
-	printf("Connection will be closed in one second\n");
+	info("Connection will be closed in one seconds");
 	sleep(1);
 	close(client_socket); /* Close client socket */
 
 	return (void *) NULL;
+}
+
+void create_file(char *filename, char *content, char *result) {
+	info("Create file %s", filename);
+	strcpy(result, ANSWER_SUCCESS_CREATE);
+}
+
+void update_file(char *filename, char *content, char *result) {
+	info("Update file %s", filename);
+	result = ANSWER_SUCCESS_UPDATE;
+}
+
+void delete_file(char *filename, char *result) {
+	info("Delete file %s", filename);
+	result = ANSWER_SUCCESS_DELETE;
+}
+
+void read_file(char *filename, char *result) {
+	info("Read file %s", filename);
+	strcpy(result, ANSWER_SUCCESS_READ);
+}
+
+void list_files(char *result) {
+	info("List files");
+	result = ANSWER_SUCCESS_LIST;
 }
