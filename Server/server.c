@@ -43,11 +43,11 @@ struct memory_file *head = NULL;
 
 void *thread_run(void *ptr);
 
-void create_file(char *msg, char *result);
-void update_file(char *msg, char *result);
-void delete_file(char *msg, char *result);
-void read_file(char *msg, char *result);
-void list_files(char *msg, char *result);
+char *create_file(char *msg);
+char *update_file(char *msg);
+char *delete_file(char *msg);
+char *read_file(char *msg);
+char *list_files(char *msg);
 
 /* The following is the size of a buffer to contain any error messages
  encountered when the regular expression is compiled. */
@@ -242,24 +242,25 @@ void *thread_run(void *ptr) {
 	char *actionPointer = buffer_ptr[0];
 	unsigned char action = actionPointer[0];
 
-	char result[100];
+	char *result;
 	switch (action) {
 	case COMMAND_CREATE:
-		create_file(*buffer_ptr, result);
+		result = create_file(*buffer_ptr);
 		break;
 	case COMMAND_UPDATE:
-		update_file(*buffer_ptr, result);
+		result = update_file(*buffer_ptr);
 		break;
 	case COMMAND_DELETE:
-		delete_file(*buffer_ptr, result);
+		result = delete_file(*buffer_ptr);
 		break;
 	case COMMAND_READ:
-		read_file(*buffer_ptr, result);
+		result = read_file(*buffer_ptr);
 		break;
 	case COMMAND_LIST:
-		list_files(*buffer_ptr, result);
+		result = list_files(*buffer_ptr);
 		break;
 	default:
+		result = ANSWER_UNKOWN;
 		error("Wrong action %s", action);
 	}
 
@@ -385,7 +386,7 @@ int list_memory_file(char *file_list) {
 	return file_counter;
 }
 
-void create_file(char *msg, char *result) {
+char *create_file(char *msg) {
 	regex_t r;
 	char filename[4096];
 	char org_length_str[5];
@@ -398,8 +399,7 @@ void create_file(char *msg, char *result) {
 	regfree(&r);
 	if (!retCode) {
 		error("Message does not match to regex!");
-		strcpy(result, ANSWER_UNKOWN);
-		return;
+		return ANSWER_UNKOWN;
 	}
 	int orig_length = atoi(org_length_str);
 	debug("Test filename: %s", filename);
@@ -410,24 +410,23 @@ void create_file(char *msg, char *result) {
 	int length = strlen(content);
 	if (length != orig_length) {
 		error("Message length is not correct!");
-		strcpy(result, ANSWER_INVALID);
-		return;
+		return ANSWER_INVALID;
 	}
 	struct memory_file* file = search_file(filename, NULL);
 	if (file == NULL) {
 		file = add_memory_file(filename, length, content);
 		if (file != NULL) {
-			strcpy(result, ANSWER_SUCCESS_CREATE);
+			return ANSWER_SUCCESS_CREATE;
 		} else {
 			error("Could not create file");
-			strcpy(result, ANSWER_FAILED_CREATE);
+			return ANSWER_FAILED_CREATE;
 		}
-	} else {
-		strcpy(result, ANSWER_FAILED_CREATE);
 	}
+	return ANSWER_FAILED_CREATE;
+
 }
 
-void update_file(char *msg, char *result) {
+char *update_file(char *msg) {
 	regex_t r;
 	char filename[4096];
 	char org_length_str[5];
@@ -440,8 +439,7 @@ void update_file(char *msg, char *result) {
 	regfree(&r);
 	if (!retCode) {
 		error("Message does not match to regex!");
-		strcpy(result, ANSWER_UNKOWN);
-		return;
+		return ANSWER_UNKOWN;
 	}
 	int orig_length = atoi(org_length_str);
 	debug("Test filename: %s", filename);
@@ -452,20 +450,18 @@ void update_file(char *msg, char *result) {
 	int length = strlen(content);
 	if (length != orig_length) {
 		error("Message length is not correct!");
-		strcpy(result, ANSWER_INVALID);
-		return;
+		return ANSWER_INVALID;
 	}
 	struct memory_file* file = search_file(filename, NULL);
 	if (file != NULL) {
 		file->length = length;
 		file->content = content;
-		strcpy(result, ANSWER_SUCCESS_UPDATE);
-	} else {
-		strcpy(result, ANSWER_FAILED_UPDATE);
+		return ANSWER_SUCCESS_UPDATE;
 	}
+	return ANSWER_FAILED_UPDATE;
 }
 
-void delete_file(char *msg, char *result) {
+char *delete_file(char *msg) {
 	regex_t r;
 	char filename[4096];
 
@@ -475,19 +471,17 @@ void delete_file(char *msg, char *result) {
 	regfree(&r);
 	if (!retCode) {
 		error("Message does not match to regex!");
-		strcpy(result, ANSWER_UNKOWN);
-		return;
+		return ANSWER_UNKOWN;
 	}
 
 	info("Delete file %s", filename);
 	if (delete_memory_file(filename) == 0) {
-		strcpy(result, ANSWER_SUCCESS_DELETE);
-	} else {
-		strcpy(result, ANSWER_FAILED_DELETE);
+		return ANSWER_SUCCESS_DELETE;
 	}
+	return ANSWER_FAILED_DELETE;
 }
 
-void read_file(char *msg, char *result) {
+char *read_file(char *msg) {
 	regex_t r;
 	char filename[4096];
 
@@ -497,8 +491,7 @@ void read_file(char *msg, char *result) {
 	regfree(&r);
 	if (!retCode) {
 		error("Message does not match to regex!");
-		strcpy(result, ANSWER_UNKOWN);
-		return;
+		return ANSWER_UNKOWN;
 	}
 
 	info("Read file %s", filename);
@@ -511,17 +504,16 @@ void read_file(char *msg, char *result) {
 			rv = append_strings(rv, "\n");
 			rv = append_strings(rv, content);
 			rv = append_strings(rv, "\n");
-			strcpy(result, rv);
+			return rv;
 		} else {
 			error("Could not read file");
-			strcpy(result, ANSWER_FAILED_READ);
+			return ANSWER_FAILED_READ;
 		}
-	} else {
-		strcpy(result, ANSWER_FAILED_READ);
 	}
+	return ANSWER_FAILED_READ;
 }
 
-void list_files(char *msg, char *result) {
+char *list_files(char *msg) {
 	regex_t r;
 
 	const char *list_regex_text = "LIST";
@@ -530,13 +522,13 @@ void list_files(char *msg, char *result) {
 	regfree(&r);
 	if (!retCode) {
 		error("Message does not match to regex!");
-		strcpy(result, ANSWER_UNKOWN);
-		return;
+		return ANSWER_UNKOWN;
 	}
 
 	info("List files");
 	char file_list[0];
 	int file_counter = list_memory_file(file_list);
+
 	debug("Output from list method: %s", file_list);
 	char str[15];
 	sprintf(str, "%d", file_counter);
@@ -544,5 +536,5 @@ void list_files(char *msg, char *result) {
 	rv = append_strings(rv, "\n");
 	rv = append_strings(rv, file_list);
 	rv = append_strings(rv, "\n");
-	strcpy(result, rv);
+	return rv;
 }
