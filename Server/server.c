@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
+#include <regex.h>
 
 #include <serverlib.h>
 #include <logger.h>
@@ -42,11 +43,80 @@ struct memory_file *head = NULL;
 
 void *thread_run(void *ptr);
 
-void create_file(char *filename, int length, char *content, char *result);
-void update_file(char *filename, char *content, char *result);
-void delete_file(char *filename, char *result);
-void read_file(char *filename, char *result);
-void list_files(char *result);
+void create_file(char *msg, char *result);
+void update_file(char *msg, char *result);
+void delete_file(char *msg, char *result);
+void read_file(char *msg, char *result);
+void list_files(char *msg, char *result);
+
+/* The following is the size of a buffer to contain any error messages
+ encountered when the regular expression is compiled. */
+
+#define MAX_ERROR_MSG 0x1000
+
+/**
+ * Compile the regular expression described by "regex_text" into "r".
+ */
+static int compile_regex(regex_t * r, const char * regex_text) {
+	int status = regcomp(r, regex_text, REG_EXTENDED | REG_NEWLINE);
+	if (status != 0) {
+		char error_message[MAX_ERROR_MSG];
+		regerror(status, r, error_message, MAX_ERROR_MSG);
+		error("Regex error compiling '%s': %s", regex_text, error_message);
+		return 1;
+	}
+	return 0;
+
+}
+
+/**
+ * Match the string in "to_match" against the compiled regular expression in "r".
+ */
+static int match_regex(regex_t * r, const char * to_match, char *filename,
+		char *length, char *content) {
+	/* "P" is a pointer into the string which points to the end of the
+	 previous match. */
+	const char * p = to_match;
+	/* "N_matches" is the maximum number of matches allowed. */
+	const int n_matches = 10;
+	/* "M" contains the matches found. */
+	regmatch_t m[n_matches];
+	debug("Catch the matches from %s", to_match);
+	int matches = 0;
+	while (1) {
+		debug("Matching %s", p);
+		int i = 0;
+		int nomatch = regexec(r, p, n_matches, m, 0);
+		if (nomatch) {
+			if (matches == 0) {
+				error("No matches!");
+				return FALSE;
+			} else {
+				debug("No more matches");
+				return TRUE;
+			}
+		}
+		matches++;
+		for (i = 0; i < n_matches; i++) {
+			int start;
+			int finish;
+			if (m[i].rm_so == -1) {
+				break;
+			}
+			start = m[i].rm_so + (p - to_match);
+			finish = m[i].rm_eo + (p - to_match);
+			if (i == 1) {
+				sprintf(filename, "%.*s", (finish - start), to_match + start);
+			} else if (i == 2) {
+				sprintf(length, "%.*s", (finish - start), to_match + start);
+			} else if (i == 3) {
+				sprintf(content, "%.*s", (finish - start), to_match + start);
+			}
+		}
+		p += m[0].rm_eo;
+	}
+	return FALSE;
+}
 
 void usage(char *argv0, char *msg) {
 	error("%s\n", msg);
@@ -65,7 +135,7 @@ void cleanup() {
 }
 
 void sigHandler(int signum) {
-	if (signum == SIGINT) {
+	if (signum == SIGINT || signum == SIGUSR1) {
 		info("Server will be stopped");
 		cleanup();
 		info("Server stopped");
@@ -75,6 +145,7 @@ void sigHandler(int signum) {
 
 int main(int argc, char *argv[]) {
 	signal(SIGINT, sigHandler);
+	signal(SIGUSR1, sigHandler);
 	int retcode;
 	pthread_t *thread;
 
@@ -171,25 +242,22 @@ void *thread_run(void *ptr) {
 	char *actionPointer = buffer_ptr[0];
 	unsigned char action = actionPointer[0];
 
-	char *filename = "testFile";
-	int length = 10;
-	char *content = "blablabla";
 	char result[100];
 	switch (action) {
 	case COMMAND_CREATE:
-		create_file(filename, length, content, result);
+		create_file(*buffer_ptr, result);
 		break;
 	case COMMAND_UPDATE:
-		update_file(filename, content, result);
+		update_file(*buffer_ptr, result);
 		break;
 	case COMMAND_DELETE:
-		delete_file(filename, result);
+		delete_file(*buffer_ptr, result);
 		break;
 	case COMMAND_READ:
-		read_file(filename, result);
+		read_file(*buffer_ptr, result);
 		break;
 	case COMMAND_LIST:
-		list_files(result);
+		list_files(*buffer_ptr, result);
 		break;
 	default:
 		error("Wrong action %s", action);
@@ -295,20 +363,6 @@ int delete_memory_file(char* filename) {
 	return rv;
 }
 
-char * append_strings(const char * old, const char * new) {
-	// find the size of the string to allocate
-	const size_t old_len = strlen(old), new_len = strlen(new);
-	const size_t out_len = old_len + new_len + 1;
-
-	// allocate a pointer to the new string
-	char *out = malloc(out_len);
-
-	// concat both strings and return
-	memcpy(out, old, old_len);
-	memcpy(out + old_len, new, new_len + 1);
-	return out;
-}
-
 int list_memory_file(char *file_list) {
 	struct memory_file *ptr = head;
 	int file_counter = 0;
@@ -326,13 +380,39 @@ int list_memory_file(char *file_list) {
 		ptr = ptr->next;
 		file_counter++;
 	}
-	strcpy(file_list,tmp_file_list);
+	strcpy(file_list, tmp_file_list);
 
 	return file_counter;
 }
 
-void create_file(char *filename, int length, char *content, char *result) {
+void create_file(char *msg, char *result) {
+	regex_t r;
+	char filename[4096];
+	char org_length_str[5];
+	char content[4096];
+
+	const char * create_regex_text =
+			"CREATE[[:blank:]]+([[:alnum:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	compile_regex(&r, create_regex_text);
+	int retCode = match_regex(&r, msg, filename, org_length_str, content);
+	regfree(&r);
+	if (!retCode) {
+		error("Message does not match to regex!");
+		strcpy(result, ANSWER_UNKOWN);
+		return;
+	}
+	int orig_length = atoi(org_length_str);
+	debug("Test filename: %s", filename);
+	debug("Test length: %d", orig_length);
+	debug("Test content: %s", content);
+
 	info("Create file %s", filename);
+	int length = strlen(content);
+	if (length != orig_length) {
+		error("Message length is not correct!");
+		strcpy(result, ANSWER_INVALID);
+		return;
+	}
 	struct memory_file* file = search_file(filename, NULL);
 	if (file == NULL) {
 		file = add_memory_file(filename, length, content);
@@ -347,12 +427,58 @@ void create_file(char *filename, int length, char *content, char *result) {
 	}
 }
 
-void update_file(char *filename, char *content, char *result) {
+void update_file(char *msg, char *result) {
+	regex_t r;
+	char filename[4096];
+	char org_length_str[5];
+	char content[4096];
+
+	const char *update_regex_text =
+			"UPDATE[[:blank:]]+([[:alnum:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	compile_regex(&r, update_regex_text);
+	int retCode = match_regex(&r, msg, filename, org_length_str, content);
+	regfree(&r);
+	if (!retCode) {
+		error("Message does not match to regex!");
+		strcpy(result, ANSWER_UNKOWN);
+		return;
+	}
+	int orig_length = atoi(org_length_str);
+	debug("Test filename: %s", filename);
+	debug("Test length: %d", orig_length);
+	debug("Test content: %s", content);
+
 	info("Update file %s", filename);
-	strcpy(result, ANSWER_SUCCESS_UPDATE);
+	int length = strlen(content);
+	if (length != orig_length) {
+		error("Message length is not correct!");
+		strcpy(result, ANSWER_INVALID);
+		return;
+	}
+	struct memory_file* file = search_file(filename, NULL);
+	if (file != NULL) {
+		file->length = length;
+		file->content = content;
+		strcpy(result, ANSWER_SUCCESS_UPDATE);
+	} else {
+		strcpy(result, ANSWER_FAILED_UPDATE);
+	}
 }
 
-void delete_file(char *filename, char *result) {
+void delete_file(char *msg, char *result) {
+	regex_t r;
+	char filename[4096];
+
+	const char *delete_regex_text = "DELETE[[:blank:]]+([[:alnum:]]+)";
+	compile_regex(&r, delete_regex_text);
+	int retCode = match_regex(&r, msg, filename, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error("Message does not match to regex!");
+		strcpy(result, ANSWER_UNKOWN);
+		return;
+	}
+
 	info("Delete file %s", filename);
 	if (delete_memory_file(filename) == 0) {
 		strcpy(result, ANSWER_SUCCESS_DELETE);
@@ -361,7 +487,20 @@ void delete_file(char *filename, char *result) {
 	}
 }
 
-void read_file(char *filename, char *result) {
+void read_file(char *msg, char *result) {
+	regex_t r;
+	char filename[4096];
+
+	const char *read_regex_text = "READ[[:blank:]]+([[:alnum:]]+)";
+	compile_regex(&r, read_regex_text);
+	int retCode = match_regex(&r, msg, filename, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error("Message does not match to regex!");
+		strcpy(result, ANSWER_UNKOWN);
+		return;
+	}
+
 	info("Read file %s", filename);
 	struct memory_file* file = search_file(filename, NULL);
 	if (file != NULL) {
@@ -382,7 +521,19 @@ void read_file(char *filename, char *result) {
 	}
 }
 
-void list_files(char *result) {
+void list_files(char *msg, char *result) {
+	regex_t r;
+
+	const char *list_regex_text = "LIST";
+	compile_regex(&r, list_regex_text);
+	int retCode = match_regex(&r, msg, NULL, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error("Message does not match to regex!");
+		strcpy(result, ANSWER_UNKOWN);
+		return;
+	}
+
 	info("List files");
 	char file_list[0];
 	int file_counter = list_memory_file(file_list);
