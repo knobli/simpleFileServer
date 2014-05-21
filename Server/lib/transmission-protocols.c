@@ -40,7 +40,7 @@ const char *EMPTY_BUFFER = "";
 void write_string(int client_socket, char *str) {
 	int len = strlen(str);
 
-	int send_len = write(client_socket, &str, len);
+	int send_len = write(client_socket, str, len);
 	handle_error(send_len, "could not write", THREAD_EXIT);
 
 	if(send_len != len){

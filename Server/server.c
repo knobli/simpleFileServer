@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <serverlib.h>
 #include <logger.h>
@@ -24,14 +25,24 @@
 pthread_once_t once = PTHREAD_ONCE_INIT;
 
 pthread_key_t key;
+pthread_mutex_t list_mod_mutex;
 struct thread_arg {
 	int client_socket;
 	int thread_idx;
 };
 
+struct memory_file {
+	char* filename;
+	int length;
+	char* content;
+	struct memory_file *next;
+};
+
+struct memory_file *head = NULL;
+
 void *thread_run(void *ptr);
 
-void create_file(char *filename, char *content, char *result);
+void create_file(char *filename, int length, char *content, char *result);
 void update_file(char *filename, char *content, char *result);
 void delete_file(char *filename, char *result);
 void read_file(char *filename, char *result);
@@ -46,7 +57,24 @@ void usage(char *argv0, char *msg) {
 	exit(1);
 }
 
+void cleanup() {
+	//TODO: wait for threads
+
+	debug("Destroy list mod mutex");
+	pthread_mutex_destroy(&list_mod_mutex);
+}
+
+void sigHandler(int signum) {
+	if (signum == SIGINT) {
+		info("Server will be stopped");
+		cleanup();
+		info("Server stopped");
+		exit(0);
+	}
+}
+
 int main(int argc, char *argv[]) {
+	signal(SIGINT, sigHandler);
 	int retcode;
 	pthread_t *thread;
 
@@ -92,6 +120,9 @@ int main(int argc, char *argv[]) {
 	handle_error(retcode, "listen() failed", PROCESS_EXIT);
 	info("Server started on port %i", port_number);
 
+	debug("Init mutex");
+	pthread_mutex_init(&list_mod_mutex, NULL);
+
 	int idx = 0;
 	while (TRUE) { /* Run forever */
 		/* Wait for a client to connect */
@@ -119,8 +150,8 @@ int main(int argc, char *argv[]) {
 
 		idx++;
 	}
-	/* never going to happen: */
-	exit(0);
+	/* never going to happen */
+	exit(1);
 }
 
 void *thread_run(void *ptr) {
@@ -141,11 +172,12 @@ void *thread_run(void *ptr) {
 	unsigned char action = actionPointer[0];
 
 	char *filename = "testFile";
+	int length = 10;
 	char *content = "blablabla";
 	char result[100];
 	switch (action) {
 	case COMMAND_CREATE:
-		create_file(filename, content, result);
+		create_file(filename, length, content, result);
 		break;
 	case COMMAND_UPDATE:
 		update_file(filename, content, result);
@@ -175,27 +207,191 @@ void *thread_run(void *ptr) {
 	return (void *) NULL;
 }
 
-void create_file(char *filename, char *content, char *result) {
+struct memory_file* search_file(char *filename, struct memory_file **prev) {
+	struct memory_file *ptr = head;
+	struct memory_file *tmp = NULL;
+	bool found = false;
+	info("Searching file '%s' in the list", filename);
+	while (ptr != NULL) {
+		if (strcmp(ptr->filename, filename) == 0) {
+			found = true;
+			break;
+		} else {
+			tmp = ptr;
+			ptr = ptr->next;
+		}
+	}
+	if (true == found) {
+		if (prev)
+			*prev = tmp;
+		return ptr;
+	} else {
+		return NULL;
+	}
+}
+
+struct memory_file* add_memory_file(char *filename, int length, char *content) {
+
+	info("Adding file '%s' to beginning of list", filename);
+	struct memory_file *ptr = (struct memory_file*) malloc(
+			sizeof(struct memory_file));
+	if (NULL == ptr) {
+		error("Node creation failed");
+		return NULL;
+	}
+	ptr->filename = filename;
+	ptr->content = content;
+	ptr->length = length;
+
+	int returnCode;
+	debug("Lock list mod mutex - create case");
+	returnCode = pthread_mutex_lock(&list_mod_mutex);
+	handle_thread_error(returnCode, "Could not lock list mod mutex",
+			THREAD_EXIT);
+
+	ptr->next = head;
+	head = ptr;
+
+	debug("Unlock list mod mutex - create case");
+	returnCode = pthread_mutex_unlock(&list_mod_mutex);
+	handle_thread_error(returnCode, "Could not release list mod mutex",
+			THREAD_EXIT);
+	return ptr;
+}
+
+int delete_memory_file(char* filename) {
+	struct memory_file *prev = NULL;
+	struct memory_file *del = NULL;
+
+	info("Deleting file '%s' from list", filename);
+
+	int returnCode;
+	int rv = 0;
+	debug("Lock list mod mutex - delete case");
+	returnCode = pthread_mutex_lock(&list_mod_mutex);
+	handle_thread_error(returnCode, "Could not lock list mod mutex",
+			THREAD_EXIT);
+	del = search_file(filename, &prev);
+	if (del == NULL) {
+		rv = -1;
+	} else {
+		if (prev != NULL)
+			prev->next = del->next;
+
+		if (del == head) {
+			head = del->next;
+		}
+	}
+	debug("Unlock list mod mutex - delete case");
+	returnCode = pthread_mutex_unlock(&list_mod_mutex);
+	handle_thread_error(returnCode, "Could not release list mod mutex",
+			THREAD_EXIT);
+	if (rv != -1) {
+		free(del);
+		del = NULL;
+		rv = 0;
+	}
+
+	return rv;
+}
+
+char * append_strings(const char * old, const char * new) {
+	// find the size of the string to allocate
+	const size_t old_len = strlen(old), new_len = strlen(new);
+	const size_t out_len = old_len + new_len + 1;
+
+	// allocate a pointer to the new string
+	char *out = malloc(out_len);
+
+	// concat both strings and return
+	memcpy(out, old, old_len);
+	memcpy(out + old_len, new, new_len + 1);
+	return out;
+}
+
+int list_memory_file(char *file_list) {
+	struct memory_file *ptr = head;
+	int file_counter = 0;
+	char *tmp_file_list = "";
+	info("Go trough files");
+	while (ptr != NULL) {
+		char *filename = ptr->filename;
+		debug("Found file '%s'", filename);
+		if (file_counter == 0) {
+			tmp_file_list = append_strings(tmp_file_list, filename);
+		} else {
+			tmp_file_list = append_strings(tmp_file_list, "\n");
+			tmp_file_list = append_strings(tmp_file_list, filename);
+		}
+		ptr = ptr->next;
+		file_counter++;
+	}
+	strcpy(file_list,tmp_file_list);
+
+	return file_counter;
+}
+
+void create_file(char *filename, int length, char *content, char *result) {
 	info("Create file %s", filename);
-	strcpy(result, ANSWER_SUCCESS_CREATE);
+	struct memory_file* file = search_file(filename, NULL);
+	if (file == NULL) {
+		file = add_memory_file(filename, length, content);
+		if (file != NULL) {
+			strcpy(result, ANSWER_SUCCESS_CREATE);
+		} else {
+			error("Could not create file");
+			strcpy(result, ANSWER_FAILED_CREATE);
+		}
+	} else {
+		strcpy(result, ANSWER_FAILED_CREATE);
+	}
 }
 
 void update_file(char *filename, char *content, char *result) {
 	info("Update file %s", filename);
-	result = ANSWER_SUCCESS_UPDATE;
+	strcpy(result, ANSWER_SUCCESS_UPDATE);
 }
 
 void delete_file(char *filename, char *result) {
 	info("Delete file %s", filename);
-	result = ANSWER_SUCCESS_DELETE;
+	if (delete_memory_file(filename) == 0) {
+		strcpy(result, ANSWER_SUCCESS_DELETE);
+	} else {
+		strcpy(result, ANSWER_FAILED_DELETE);
+	}
 }
 
 void read_file(char *filename, char *result) {
 	info("Read file %s", filename);
-	strcpy(result, ANSWER_SUCCESS_READ);
+	struct memory_file* file = search_file(filename, NULL);
+	if (file != NULL) {
+		char* content;
+		if ((content = file->content) != NULL) {
+			debug("Content of file: %s", content);
+			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);
+			rv = append_strings(rv, "\n");
+			rv = append_strings(rv, content);
+			rv = append_strings(rv, "\n");
+			strcpy(result, rv);
+		} else {
+			error("Could not read file");
+			strcpy(result, ANSWER_FAILED_READ);
+		}
+	} else {
+		strcpy(result, ANSWER_FAILED_READ);
+	}
 }
 
 void list_files(char *result) {
 	info("List files");
-	result = ANSWER_SUCCESS_LIST;
+	char file_list[0];
+	int file_counter = list_memory_file(file_list);
+	debug("Output from list method: %s", file_list);
+	char str[15];
+	sprintf(str, "%d", file_counter);
+	char *rv = append_strings(ANSWER_SUCCESS_LIST, str);
+	rv = append_strings(rv, "\n");
+	rv = append_strings(rv, file_list);
+	rv = append_strings(rv, "\n");
+	strcpy(result, rv);
 }
