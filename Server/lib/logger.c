@@ -11,8 +11,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
 #define MAX_MSG_LEN 1024
+
+static const int LOG_LEVEL = DEBUG;
 
 char * append_strings(const char * old, const char * new) {
 	// find the size of the string to allocate
@@ -65,47 +68,64 @@ char *mk_readable(const char* string) {
 	return rv;
 }
 
-void log(const char* tag, const char* message) {
+void log(const char* tag, int deep, const char* message) {
+	long thread_id =(long) pthread_self();
 	time_t now;
 	time(&now);
 	char *saveptr;
 	char *timestamp = strtok_r(ctime(&now), "\n", &saveptr);
 	message = mk_readable(message);
-	printf("%s [%s]: %s\n", timestamp, tag, message);
+	int i;
+	for(i = 0; i < deep; i++){
+		message = append_strings("  ",message);
+	}
+	printf("%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
 }
 
-void debug(const char* message, ...) {
+void debug(int deep, const char* message, ...) {
+	if (LOG_LEVEL < DEBUG) {
+		return;
+	}
 	va_list listPointer;
 	char logLine[MAX_MSG_LEN];
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("DEBUG", logLine);
+	log("DEBUG", deep, logLine);
 }
 
-void info(const char* message, ...) {
+void info(int deep, const char* message, ...) {
+	if (LOG_LEVEL < INFO) {
+		return;
+	}
 	va_list listPointer;
 	char logLine[MAX_MSG_LEN];
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("INFO", logLine);
+	log("INFO ", deep, logLine);
 }
 
-void warn(const char* message, ...) {
+void warn(int deep, const char* message, ...) {
+	if (LOG_LEVEL < WARN) {
+		return;
+	}
 	va_list listPointer;
 	char logLine[MAX_MSG_LEN];
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("WARN", logLine);
+	log("WARN ", deep, logLine);
 }
 
-void error(const char* message, ...) {
+void error(int deep, const char* message, ...) {
+	if (LOG_LEVEL < ERROR) {
+		return;
+	}
 	va_list listPointer;
 	char logLine[MAX_MSG_LEN];
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("ERROR", logLine);
+	log("ERROR", deep, logLine);
 }

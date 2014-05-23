@@ -58,11 +58,12 @@ char *list_files(char *msg);
  * Compile the regular expression described by "regex_text" into "r".
  */
 static int compile_regex(regex_t * r, const char * regex_text) {
+	const int deep = 3;
 	int status = regcomp(r, regex_text, REG_EXTENDED | REG_NEWLINE);
 	if (status != 0) {
 		char error_message[MAX_ERROR_MSG];
 		regerror(status, r, error_message, MAX_ERROR_MSG);
-		error("Regex error compiling '%s': %s", regex_text, error_message);
+		error(deep,"Regex error compiling '%s': %s", regex_text, error_message);
 		return 1;
 	}
 	return 0;
@@ -74,6 +75,7 @@ static int compile_regex(regex_t * r, const char * regex_text) {
  */
 static int match_regex(regex_t * r, const char * to_match, char *filename,
 		char *length, char *content) {
+	const int deep = 3;
 	/* "P" is a pointer into the string which points to the end of the
 	 previous match. */
 	const char * p = to_match;
@@ -81,18 +83,18 @@ static int match_regex(regex_t * r, const char * to_match, char *filename,
 	const int n_matches = 10;
 	/* "M" contains the matches found. */
 	regmatch_t m[n_matches];
-	debug("Catch the matches from %s", to_match);
+	debug(deep,"Catch the matches from %s", to_match);
 	int matches = 0;
 	while (1) {
-		debug("Matching %s", p);
+		debug(deep,"Matching %s", p);
 		int i = 0;
 		int nomatch = regexec(r, p, n_matches, m, 0);
 		if (nomatch) {
 			if (matches == 0) {
-				error("No matches!");
+				error(deep,"No matches!");
 				return FALSE;
 			} else {
-				debug("No more matches");
+				debug(deep,"No more matches");
 				return TRUE;
 			}
 		}
@@ -119,7 +121,8 @@ static int match_regex(regex_t * r, const char * to_match, char *filename,
 }
 
 void usage(char *argv0, char *msg) {
-	error("%s\n", msg);
+	const int deep = 0;
+	error(deep,"%s\n", msg);
 	printf("Usage:\n\n");
 
 	printf("starts the file server listening on the given port\n");
@@ -128,22 +131,24 @@ void usage(char *argv0, char *msg) {
 }
 
 void cleanup() {
+	const int deep = 0;
 	//TODO: wait for threads
-
-	debug("Destroy list mod mutex");
+	debug(deep,"Destroy list mod mutex");
 	pthread_mutex_destroy(&list_mod_mutex);
 }
 
 void sigHandler(int signum) {
+	const int deep = 0;
 	if (signum == SIGINT || signum == SIGUSR1) {
-		info("Server will be stopped");
+		info(deep,"Server will be stopped");
 		cleanup();
-		info("Server stopped");
+		info(deep,"Server stopped");
 		exit(0);
 	}
 }
 
 int main(int argc, char *argv[]) {
+	const int deep = 0;
 	signal(SIGINT, sigHandler);
 	signal(SIGUSR1, sigHandler);
 	int retcode;
@@ -153,11 +158,11 @@ int main(int argc, char *argv[]) {
 
 	char *argv0 = argv[0];
 	if (argc != 2) {
-		debug("found %d arguments", argc - 1);
+		debug(deep,"found %d arguments", argc - 1);
 		usage(argv0, "wrong number of arguments");
 	}
 
-	debug("Read port number");
+	debug(deep,"Read port number");
 	int port_number = atoi(argv[1]);
 
 	int server_socket; /* Socket descriptor for server */
@@ -169,7 +174,7 @@ int main(int argc, char *argv[]) {
 	unsigned int client_address_len = sizeof(client_address);
 
 	/* Create socket for incoming connections */
-	debug("Create socket");
+	debug(deep,"Create socket");
 	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	handle_error(server_socket, "socket() failed", PROCESS_EXIT);
 
@@ -180,18 +185,18 @@ int main(int argc, char *argv[]) {
 	server_address.sin_port = htons(port_number); /* Local port */
 
 	/* Bind to the local address */
-	debug("Bind Server Socket");
+	debug(deep,"Bind Server Socket");
 	retcode = bind(server_socket, (struct sockaddr *) &server_address,
 			sizeof(server_address));
 	handle_error(retcode, "bind() failed", PROCESS_EXIT);
 
 	/* Mark the socket so it will listen for incoming connections */
-	debug("Listen to server socket");
+	debug(deep,"Listen to server socket");
 	retcode = listen(server_socket, MAXPENDING);
 	handle_error(retcode, "listen() failed", PROCESS_EXIT);
-	info("Server started on port %i", port_number);
+	info(deep,"Server started on port %i", port_number);
 
-	debug("Init mutex");
+	debug(deep,"Init mutex");
 	pthread_mutex_init(&list_mod_mutex, NULL);
 
 	int idx = 0;
@@ -202,7 +207,7 @@ int main(int argc, char *argv[]) {
 		handle_error(client_socket, "accept() failed", PROCESS_EXIT);
 
 		/* client_socket is connected to a client! */
-		info("Client connected");
+		info(deep,"Client connected");
 
 		thread = (pthread_t *) malloc(sizeof(pthread_t));
 		struct thread_arg *thread_data = (struct thread_arg *) malloc(
@@ -214,9 +219,9 @@ int main(int argc, char *argv[]) {
 		/* create thread: */
 		if (pthread_create(thread, NULL, (void*) thread_run,
 				(void*) thread_data) != 0) {
-			error("pthread_create failed");
+			error(deep,"pthread_create failed");
 		} else {
-			info("pthread_create success");
+			info(deep,"pthread_create success");
 		}
 
 		idx++;
@@ -226,23 +231,24 @@ int main(int argc, char *argv[]) {
 }
 
 void *thread_run(void *ptr) {
-	debug("Thread run entered");
+	const int deep = 1;
+	debug(deep,"Thread run entered");
 	struct thread_arg *arg = (struct thread_arg *) ptr;
 	int client_socket = arg->client_socket;
-	debug("Client socket: %d", client_socket);
-	debug("Thread index: %d", arg->thread_idx);
+	debug(deep,"Client socket: %d", client_socket);
+	debug(deep,"Thread index: %d", arg->thread_idx);
 
 	char *buffer_ptr[0];
-	info("Receive message from client");
+	info(deep,"Receive message from client");
 	size_t msg_length = read_and_store_string(client_socket, buffer_ptr);
 	handle_error(msg_length, "receive failed", THREAD_EXIT);
 
-	debug("Received string: '%s'", *buffer_ptr);
-	info("Select strategy");
+	debug(deep,"Received string: '%s'", *buffer_ptr);
+	info(deep,"Select strategy");
 	char *actionPointer = buffer_ptr[0];
 	unsigned char action = actionPointer[0];
 
-	char *result;
+	char *result = (char*)malloc(10000 * sizeof(char));;
 	switch (action) {
 	case COMMAND_CREATE:
 		result = create_file(*buffer_ptr);
@@ -258,18 +264,19 @@ void *thread_run(void *ptr) {
 		break;
 	case COMMAND_LIST:
 		result = list_files(*buffer_ptr);
+		debug(deep,"list files done");
 		break;
 	default:
 		result = ANSWER_UNKOWN;
-		error("Wrong action %s", action);
+		error(deep,"Wrong action %s", action);
 	}
 
-	debug("Return value: %s", result);
+	debug(deep,"Return value: %s", result);
 
 	write_string(client_socket, result);
 
 	write_eot(client_socket);
-	info("Connection will be closed in one seconds");
+	info(deep,"Connection will be closed in one seconds");
 	sleep(1);
 	close(client_socket); /* Close client socket */
 
@@ -277,10 +284,11 @@ void *thread_run(void *ptr) {
 }
 
 struct memory_file* search_file(char *filename, struct memory_file **prev) {
+	const int deep = 3;
 	struct memory_file *ptr = head;
 	struct memory_file *tmp = NULL;
 	bool found = false;
-	info("Searching file '%s' in the list", filename);
+	info(deep,"Searching file '%s' in the list", filename);
 	while (ptr != NULL) {
 		if (strcmp(ptr->filename, filename) == 0) {
 			found = true;
@@ -300,12 +308,12 @@ struct memory_file* search_file(char *filename, struct memory_file **prev) {
 }
 
 struct memory_file* add_memory_file(char *filename, int length, char *content) {
-
-	info("Adding file '%s' to beginning of list", filename);
+	const int deep = 3;
+	info(deep,"Adding file '%s' to beginning of list", filename);
 	struct memory_file *ptr = (struct memory_file*) malloc(
 			sizeof(struct memory_file));
 	if (NULL == ptr) {
-		error("Node creation failed");
+		error(deep,"Node creation failed");
 		return NULL;
 	}
 	ptr->filename = filename;
@@ -313,7 +321,7 @@ struct memory_file* add_memory_file(char *filename, int length, char *content) {
 	ptr->length = length;
 
 	int returnCode;
-	debug("Lock list mod mutex - create case");
+	debug(deep,"Lock list mod mutex - create case");
 	returnCode = pthread_mutex_lock(&list_mod_mutex);
 	handle_thread_error(returnCode, "Could not lock list mod mutex",
 			THREAD_EXIT);
@@ -321,7 +329,7 @@ struct memory_file* add_memory_file(char *filename, int length, char *content) {
 	ptr->next = head;
 	head = ptr;
 
-	debug("Unlock list mod mutex - create case");
+	debug(deep,"Unlock list mod mutex - create case");
 	returnCode = pthread_mutex_unlock(&list_mod_mutex);
 	handle_thread_error(returnCode, "Could not release list mod mutex",
 			THREAD_EXIT);
@@ -329,14 +337,15 @@ struct memory_file* add_memory_file(char *filename, int length, char *content) {
 }
 
 int delete_memory_file(char* filename) {
+	const int deep = 3;
 	struct memory_file *prev = NULL;
 	struct memory_file *del = NULL;
 
-	info("Deleting file '%s' from list", filename);
+	info(deep,"Deleting file '%s' from list", filename);
 
 	int returnCode;
 	int rv = 0;
-	debug("Lock list mod mutex - delete case");
+	debug(deep,"Lock list mod mutex - delete case");
 	returnCode = pthread_mutex_lock(&list_mod_mutex);
 	handle_thread_error(returnCode, "Could not lock list mod mutex",
 			THREAD_EXIT);
@@ -351,7 +360,7 @@ int delete_memory_file(char* filename) {
 			head = del->next;
 		}
 	}
-	debug("Unlock list mod mutex - delete case");
+	debug(deep,"Unlock list mod mutex - delete case");
 	returnCode = pthread_mutex_unlock(&list_mod_mutex);
 	handle_thread_error(returnCode, "Could not release list mod mutex",
 			THREAD_EXIT);
@@ -365,13 +374,14 @@ int delete_memory_file(char* filename) {
 }
 
 int list_memory_file(char *file_list) {
+	const int deep = 3;
 	struct memory_file *ptr = head;
 	int file_counter = 0;
 	char *tmp_file_list = "";
-	info("Go trough files");
+	info(deep,"Go trough files");
 	while (ptr != NULL) {
 		char *filename = ptr->filename;
-		debug("Found file '%s'", filename);
+		debug(deep,"Found file '%s'", filename);
 		if (file_counter == 0) {
 			tmp_file_list = append_strings(tmp_file_list, filename);
 		} else {
@@ -387,6 +397,7 @@ int list_memory_file(char *file_list) {
 }
 
 char *create_file(char *msg) {
+	const int deep = 2;
 	regex_t r;
 	char filename[4096];
 	char org_length_str[5];
@@ -398,18 +409,18 @@ char *create_file(char *msg) {
 	int retCode = match_regex(&r, msg, filename, org_length_str, content);
 	regfree(&r);
 	if (!retCode) {
-		error("Message does not match to regex!");
+		error(deep,"Message does not match to regex!");
 		return ANSWER_UNKOWN;
 	}
 	int orig_length = atoi(org_length_str);
-	debug("Test filename: %s", filename);
-	debug("Test length: %d", orig_length);
-	debug("Test content: %s", content);
+	debug(deep,"Test filename: %s", filename);
+	debug(deep,"Test length: %d", orig_length);
+	debug(deep,"Test content: %s", content);
 
-	info("Create file %s", filename);
+	info(deep,"Create file %s", filename);
 	int length = strlen(content);
 	if (length != orig_length) {
-		error("Message length is not correct!");
+		error(deep,"Message length is not correct!");
 		return ANSWER_INVALID;
 	}
 	struct memory_file* file = search_file(filename, NULL);
@@ -418,7 +429,7 @@ char *create_file(char *msg) {
 		if (file != NULL) {
 			return ANSWER_SUCCESS_CREATE;
 		} else {
-			error("Could not create file");
+			error(deep,"Could not create file");
 			return ANSWER_FAILED_CREATE;
 		}
 	}
@@ -427,6 +438,7 @@ char *create_file(char *msg) {
 }
 
 char *update_file(char *msg) {
+	const int deep = 2;
 	regex_t r;
 	char filename[4096];
 	char org_length_str[5];
@@ -438,18 +450,18 @@ char *update_file(char *msg) {
 	int retCode = match_regex(&r, msg, filename, org_length_str, content);
 	regfree(&r);
 	if (!retCode) {
-		error("Message does not match to regex!");
+		error(deep,"Message does not match to regex!");
 		return ANSWER_UNKOWN;
 	}
 	int orig_length = atoi(org_length_str);
-	debug("Test filename: %s", filename);
-	debug("Test length: %d", orig_length);
-	debug("Test content: %s", content);
+	debug(deep,"Test filename: %s", filename);
+	debug(deep,"Test length: %d", orig_length);
+	debug(deep,"Test content: %s", content);
 
-	info("Update file %s", filename);
+	info(deep,"Update file %s", filename);
 	int length = strlen(content);
 	if (length != orig_length) {
-		error("Message length is not correct!");
+		error(deep,"Message length is not correct!");
 		return ANSWER_INVALID;
 	}
 	struct memory_file* file = search_file(filename, NULL);
@@ -462,6 +474,7 @@ char *update_file(char *msg) {
 }
 
 char *delete_file(char *msg) {
+	const int deep = 2;
 	regex_t r;
 	char filename[4096];
 
@@ -470,11 +483,11 @@ char *delete_file(char *msg) {
 	int retCode = match_regex(&r, msg, filename, NULL, NULL);
 	regfree(&r);
 	if (!retCode) {
-		error("Message does not match to regex!");
+		error(deep,"Message does not match to regex!");
 		return ANSWER_UNKOWN;
 	}
 
-	info("Delete file %s", filename);
+	info(deep,"Delete file %s", filename);
 	if (delete_memory_file(filename) == 0) {
 		return ANSWER_SUCCESS_DELETE;
 	}
@@ -482,6 +495,7 @@ char *delete_file(char *msg) {
 }
 
 char *read_file(char *msg) {
+	const int deep = 2;
 	regex_t r;
 	char filename[4096];
 
@@ -490,23 +504,28 @@ char *read_file(char *msg) {
 	int retCode = match_regex(&r, msg, filename, NULL, NULL);
 	regfree(&r);
 	if (!retCode) {
-		error("Message does not match to regex!");
+		error(deep,"Message does not match to regex!");
 		return ANSWER_UNKOWN;
 	}
 
-	info("Read file %s", filename);
+	info(deep,"Read file %s", filename);
 	struct memory_file* file = search_file(filename, NULL);
 	if (file != NULL) {
 		char* content;
 		if ((content = file->content) != NULL) {
-			debug("Content of file: %s", content);
+			debug(deep,"Content of file: %s", content);
+			int length = strlen(content);
+			char len_string[15];
+			sprintf(len_string, "%d", length);
 			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);
+			rv = append_strings(rv, " ");
+			rv = append_strings(rv, len_string);
 			rv = append_strings(rv, "\n");
 			rv = append_strings(rv, content);
 			rv = append_strings(rv, "\n");
 			return rv;
 		} else {
-			error("Could not read file");
+			error(deep,"Could not read file");
 			return ANSWER_FAILED_READ;
 		}
 	}
@@ -514,6 +533,7 @@ char *read_file(char *msg) {
 }
 
 char *list_files(char *msg) {
+	const int deep = 2;
 	regex_t r;
 
 	const char *list_regex_text = "LIST";
@@ -521,20 +541,21 @@ char *list_files(char *msg) {
 	int retCode = match_regex(&r, msg, NULL, NULL, NULL);
 	regfree(&r);
 	if (!retCode) {
-		error("Message does not match to regex!");
+		error(deep,"Message does not match to regex!");
 		return ANSWER_UNKOWN;
 	}
 
-	info("List files");
+	info(deep,"List files");
 	char file_list[0];
 	int file_counter = list_memory_file(file_list);
 
-	debug("Output from list method: %s", file_list);
+	debug(deep,"Output from list method: %s", file_list);
 	char str[15];
 	sprintf(str, "%d", file_counter);
 	char *rv = append_strings(ANSWER_SUCCESS_LIST, str);
 	rv = append_strings(rv, "\n");
 	rv = append_strings(rv, file_list);
 	rv = append_strings(rv, "\n");
+	debug(deep,"list files nearly done");
 	return rv;
 }

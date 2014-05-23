@@ -38,13 +38,14 @@ const char *EMPTY_BUFFER = "";
  * @param len length of string to be transmitted
  */
 void write_string(int client_socket, char *str) {
+	const int deep = 2;
 	int len = strlen(str);
 
 	int send_len = write(client_socket, str, len);
 	handle_error(send_len, "could not write", THREAD_EXIT);
 
 	if(send_len != len){
-		error("Write to client socket failed");
+		error(deep,"Write to client socket failed");
 		exit_by_type(THREAD_EXIT);
 	}
 }
@@ -55,17 +56,18 @@ void write_eot(int client_socket) {
 
 /* the caller has to free the buffer, unless ulen == 0 */
 size_t read_and_store_string(int client_socket, char **result) {
+	const int deep = 2;
 	char buffer[MAX_MESSAGE_LEN + 1];
 	size_t bytes_received = 0;
 
-	debug("Read from client socket");
+	debug(deep,"Read from client socket");
 	bytes_received = read(client_socket, buffer, MAX_MESSAGE_LEN);
 	handle_error(bytes_received,
 			"recv() failed or connection closed prematurely", THREAD_EXIT);
-	debug("Received bytes: %zu", bytes_received);
+	debug(deep,"Received bytes: %zu", bytes_received);
 
 	if (bytes_received == 0) {
-		debug("Return empty buffer");
+		debug(deep,"Return empty buffer");
 		*result = (char *) EMPTY_BUFFER; /* actually the same as empty string */
 		return bytes_received;
 	}
