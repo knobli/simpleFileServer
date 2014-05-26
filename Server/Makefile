@@ -1,7 +1,7 @@
 CFLAGS=-march=native -Wall -std=gnu99 -g -O2 -I./include -L./lib
 LIBS=-lpthread -lfileserver
 
-MYSERVER_SOURCE=server.c
+MYSERVER_SOURCE=src/server.c
 MYSERVER_FILE=server.o
 
 all: server

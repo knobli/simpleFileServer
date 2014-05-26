@@ -130,9 +130,13 @@ void usage(char *argv0, char *msg) {
 	exit(1);
 }
 
+void cleanup_threads() {
+
+}
+
 void cleanup() {
 	const int deep = 0;
-	//TODO: wait for threads
+	cleanup_threads();
 	debug(deep,"Destroy list mod mutex");
 	pthread_mutex_destroy(&list_mod_mutex);
 }
@@ -221,10 +225,11 @@ int main(int argc, char *argv[]) {
 				(void*) thread_data) != 0) {
 			error(deep,"pthread_create failed");
 		} else {
-			info(deep,"pthread_create success");
+			debug(deep,"pthread_create success");
 		}
 
 		idx++;
+		cleanup_threads();
 	}
 	/* never going to happen */
 	exit(1);
@@ -277,7 +282,6 @@ void *thread_run(void *ptr) {
 
 	write_eot(client_socket);
 	info(deep,"Connection will be closed in one seconds");
-	sleep(1);
 	close(client_socket); /* Close client socket */
 
 	return (void *) NULL;
