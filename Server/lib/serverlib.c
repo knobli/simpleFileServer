@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <serverLib.h>
+#include <serverlib.h>
 
 #define ERROR_SIZE 4096
 
@@ -191,5 +191,3 @@ struct timespec get_future(time_t sec, long nsec) {
 int is_string_char(char c) {
   return ('A' <= c && c <= 'Z' || '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || '\240' <= c && c <= '\377');
 }
-
-/* end of file serverLib.c */
