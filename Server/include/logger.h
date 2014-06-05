@@ -9,8 +9,7 @@
 #define LOGGER_H_
 
 char * append_strings(const char * old, const char * new);
-char *rm_last_cr(const char* string);
-char *mk_readable(const char* string);
+char *mk_readable(char* string);
 
 void debug(int deep, const char* message, ...);
 void info(int deep, const char* message, ...);

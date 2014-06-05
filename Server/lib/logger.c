@@ -31,24 +31,7 @@ char * append_strings(const char * old, const char * new) {
 	return out;
 }
 
-char *rm_last_cr(const char* string) {
-	char *delimiter = "\n";
-	char *saveptr;
-	char *part = strtok_r(string, delimiter, &saveptr);
-	char *rv = "";
-	int i = 0;
-	while (part != NULL) {
-		if (i > 0) {
-			rv = append_strings(rv, "\n");
-		}
-		rv = append_strings(rv, part);
-		part = strtok_r(NULL, delimiter, &saveptr);
-		i++;
-	}
-	return rv;
-}
-
-char *mk_readable(const char* string) {
+char *mk_readable(char* string) {
 	char *delimiter = "\n";
 	char *saveptr;
 	char *part = strtok_r(string, delimiter, &saveptr);
@@ -68,7 +51,7 @@ char *mk_readable(const char* string) {
 	return rv;
 }
 
-void log(const char* tag, int deep, const char* message) {
+void log_msg(const char* tag, int deep, char* message) {
 	long thread_id =(long) pthread_self();
 	time_t now;
 	time(&now);
@@ -91,7 +74,7 @@ void debug(int deep, const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("DEBUG", deep, logLine);
+	log_msg("DEBUG", deep, logLine);
 }
 
 void info(int deep, const char* message, ...) {
@@ -103,7 +86,7 @@ void info(int deep, const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("INFO ", deep, logLine);
+	log_msg("INFO ", deep, logLine);
 }
 
 void warn(int deep, const char* message, ...) {
@@ -115,7 +98,7 @@ void warn(int deep, const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("WARN ", deep, logLine);
+	log_msg("WARN ", deep, logLine);
 }
 
 void error(int deep, const char* message, ...) {
@@ -127,5 +110,5 @@ void error(int deep, const char* message, ...) {
 	va_start(listPointer, message);
 	vsprintf(logLine, message, listPointer);
 	va_end(listPointer);
-	log("ERROR", deep, logLine);
+	log_msg("ERROR", deep, logLine);
 }

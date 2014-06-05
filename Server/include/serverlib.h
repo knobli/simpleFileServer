@@ -23,11 +23,6 @@ enum exit_type { PROCESS_EXIT, THREAD_EXIT, NO_EXIT };
 
 enum file_type { NOT_EXISTENT, DIRECTORY, REGULAR_FILE, OTHER };
 
-/* check if --help or similar is indicated */
-int is_help_requested(int argc, char *argv[]);
-
-struct timespec get_future(time_t sec, long nsec);
-
 void exit_by_type(enum exit_type et);
 
 void handle_thread_error(int retcode, const char *msg, enum exit_type et);
@@ -38,19 +33,6 @@ void handle_error(long return_code, const char *msg, enum exit_type et);
 void handle_error_myerrno(long return_code, int myerrno, const char *msg, enum exit_type et);
 
 void handle_ptr_error(void *ptr, const char *msg, enum exit_type et);
-
-void die_with_error(char *error_message);
-
-int open_retry_mode(char *file, int flags, mode_t mode, enum exit_type et);
-
-int open_retry(char *file, int flags, enum exit_type et);
-
-enum file_type check_file(const char *file_or_dir_name);
-
-/* creates a file if it does not exist */
-int create_if_missing(const char *pathname, mode_t mode);
-
-int is_string_char(char c);
 
 #endif
 
