@@ -452,8 +452,8 @@ char *list_files(char *msg) {
 	}
 
 	info(deep, "List files");
-	char file_list[0];
-	int file_counter = list_memory_file(file_list);
+	char *file_list;
+	int file_counter = list_memory_file(&file_list);
 
 	debug(deep, "Output from list method: %s", file_list);
 	char str[15];
@@ -463,5 +463,6 @@ char *list_files(char *msg) {
 	rv = append_strings(rv, file_list);
 	rv = append_strings(rv, "\n");
 	debug(deep, "list files nearly done");
+	free(file_list);
 	return rv;
 }

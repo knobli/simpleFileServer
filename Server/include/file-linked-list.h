@@ -18,7 +18,7 @@ int read_memory_file(char *filename, char *content);
 
 int delete_memory_file(char* filename);
 
-int list_memory_file(char *file_list);
+int list_memory_file(char **file_list);
 
 
 #endif /* FILE_LINKED_LIST_H_ */

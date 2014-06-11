@@ -36,8 +36,12 @@ struct memory_file* create_memory_file(char *filename, int length,
 		error(deep, "Node creation failed");
 		return NULL;
 	}
-	file->filename = filename;
-	file->content = content;
+	size_t filename_size = strlen(filename) + 1;
+	file->filename = malloc(filename_size);
+	strncpy(file->filename,filename,filename_size);
+	size_t content_size = length + 1;
+	file->content = malloc(content_size);
+	strncpy(file->content,content,content_size);
 	file->length = length;
 	file->next = NULL;
 
@@ -190,7 +194,10 @@ int update_memory_file(char *filename, int length, char *content) {
 		handle_thread_error(returnCode, "Could not lock rw mutex", THREAD_EXIT);
 
 		file->length = length;
-		file->content = content;
+		char *saved_content = file->content;
+		file->content = malloc(length + 1);
+		strncpy(file->content,content,length + 1);
+		free(saved_content);
 
 		debug(deep, "Release rw mutex on %p - update case", file);
 		returnCode = pthread_rwlock_unlock(&file->rwlock);
@@ -216,7 +223,7 @@ int read_memory_file(char *filename, char *content) {
 		handle_thread_error(returnCode, "Could not lock rw mutex - read",
 				THREAD_EXIT);
 		debug(deep, "Read content %s", file->content);
-		strcpy(content, file->content);
+		strncpy(content, file->content, file->length + 1);
 		debug(deep, "Release rw mutex on %p - read case", file);
 		returnCode = pthread_rwlock_unlock(&file->rwlock);
 		handle_thread_error(returnCode, "Could not release rw mutex - read",
@@ -250,6 +257,11 @@ int delete_memory_file(char* filename) {
 	handle_thread_error(returnCode, "Could not release link mod mutex - delete",
 			THREAD_EXIT);
 	if (rv != -1) {
+		debug(deep, "Free filename");
+		free(del->filename);
+		debug(deep, "Free content");
+		free(del->content);
+		debug(deep, "Free file");
 		free(del);
 		del = NULL;
 		rv = 0;
@@ -258,7 +270,7 @@ int delete_memory_file(char* filename) {
 	return rv;
 }
 
-int list_memory_file(char *file_list) {
+int list_memory_file(char **file_list) {
 	const int deep = 3;
 	struct memory_file *ptr = head;
 	struct memory_file *last = NULL;
@@ -299,7 +311,9 @@ int list_memory_file(char *file_list) {
 		handle_thread_error(returnCode, "Could not release link mod mutex",
 				THREAD_EXIT);
 	}
-	strcpy(file_list, tmp_file_list);
+	size_t list_length = strlen(tmp_file_list) + 1;
+	*file_list = malloc(list_length);
+	strncpy(*file_list, tmp_file_list, list_length);
 
 	return file_counter;
 }
