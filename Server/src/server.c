@@ -20,42 +20,34 @@
 
 #include "../lib/util.c"
 #include <serverlib.h>
+#include <file-linked-list.h>
+#include <thread-linked-list.h>
 #include <logger.h>
 #include <transmission-protocols.h>
 
 #define MAXPENDING 5    /* Maximum outstanding connection requests */
-pthread_once_t once = PTHREAD_ONCE_INIT;
+/* The following is the size of a buffer to contain any error messages
+ encountered when the regular expression is compiled. */
+
+#define MAX_ERROR_MSG 0x1000
 
 struct thread_arg {
 	int client_socket;
 	int thread_idx;
 };
 
-struct memory_file {
-	char* filename;
-	int length;
-	char* content;
-	pthread_mutex_t link_mod_mutex;
-	pthread_rwlock_t rwlock;
-	struct memory_file *next;
-};
-
-struct memory_file *head = NULL;
+int server_socket; /* Socket descriptor for server */
+pthread_t *cleanup_thread;
+bool clean_threads = true;
 
 void *thread_run(void *ptr);
+void *thread_cleanup_run(void *ptr);
 
-struct memory_file* create_memory_file(char *filename, int length,
-		char *content);
 char *create_file(char *msg);
 char *update_file(char *msg);
 char *delete_file(char *msg);
 char *read_file(char *msg);
 char *list_files(char *msg);
-
-/* The following is the size of a buffer to contain any error messages
- encountered when the regular expression is compiled. */
-
-#define MAX_ERROR_MSG 0x1000
 
 /**
  * Compile the regular expression described by "regex_text" into "r".
@@ -130,20 +122,22 @@ void usage(char *argv0, char *msg) {
 	printf("Usage:\n\n");
 
 	printf("starts the file server listening on the given port\n");
-	printf("%s <port>\n\n", argv0);
+	printf("%s <port> (default: 7000)\n\n", argv0);
 	exit(1);
 }
 
-void cleanup_threads() {
+void stop_cleanup_threads() {
 	const int deep = 1;
-	debug(deep, "Cleanup all threads");
+	debug(deep, "Stop clean running threads");
+	clean_threads = false;
+	pthread_join(*cleanup_thread, NULL);
 }
 
 void cleanup() {
 	const int deep = 0;
-	cleanup_threads();
-	debug(deep, "Destroy link mod mutex");
-	//pthread_mutex_destroy(&list_mod_mutex);
+	stop_cleanup_threads();
+	debug(deep, "Close server socket");
+	close(server_socket);
 }
 
 void sigHandler(int signum) {
@@ -165,17 +159,30 @@ int main(int argc, char *argv[]) {
 	pthread_t *thread;
 
 	char *argv0 = argv[0];
-	if (argc != 2) {
+	if (argc > 2) {
 		debug(deep, "found %d arguments", argc - 1);
 		usage(argv0, "wrong number of arguments");
 	}
 
-	debug(deep, "Read port number");
-	int port_number = atoi(argv[1]);
+	int port_number;
+	if (argc == 2) {
+		debug(deep, "Read port number");
+		port_number = atoi(argv[1]);
+	} else {
+		port_number = 7000;
+	}
 
-	head = create_memory_file("", 0, "");
+	init_linked_list();
+	init_thread_linked_list();
 
-	int server_socket; /* Socket descriptor for server */
+	/* create cleanup thread: */
+	cleanup_thread = (pthread_t *) malloc(sizeof(pthread_t));
+	if (pthread_create(cleanup_thread, NULL, (void*) thread_cleanup_run, NULL) != 0) {
+		error(deep, "pthread_create for cleanup thread failed");
+	} else {
+		debug(deep, "pthread_create for cleanup thread success");
+	}
+
 	int client_socket; /* Socket descriptor for client */
 	struct sockaddr_in server_address; /* Local address */
 	struct sockaddr_in client_address; /* Client address */
@@ -206,7 +213,7 @@ int main(int argc, char *argv[]) {
 	handle_error(retcode, "listen() failed", PROCESS_EXIT);
 	info(deep, "Server started on port %i", port_number);
 
-	int idx = 0;
+	int idx = 1;
 	while (TRUE) { /* Run forever */
 		/* Wait for a client to connect */
 		client_socket = accept(server_socket,
@@ -229,13 +236,24 @@ int main(int argc, char *argv[]) {
 			error(deep, "pthread_create failed");
 		} else {
 			debug(deep, "pthread_create success");
+			add_thread_element(idx, *thread);
 		}
 
 		idx++;
-		cleanup_threads();
 	}
 	/* never going to happen */
 	exit(1);
+}
+
+void *thread_cleanup_run(void *ptr) {
+	const int deep = 1;
+	debug(deep, "Cleanup thread started");
+	while(clean_threads){
+		sleep(2);
+		info(deep, "Start cleanup running threads");
+		clean_up_threads();
+	}
+	return (void *) NULL;
 }
 
 void *thread_run(void *ptr) {
@@ -285,212 +303,10 @@ void *thread_run(void *ptr) {
 	write_string(client_socket, result);
 
 	write_eot(client_socket);
-	info(deep, "Connection will be closed in one seconds");
+	info(deep, "Connection will be closed");
 	close(client_socket); /* Close client socket */
 
 	return (void *) NULL;
-}
-
-struct memory_file* search_file(char *filename, struct memory_file **prev,
-		int lock) {
-	const int deep = 3;
-	int returnCode;
-	struct memory_file *ptr = head;
-	struct memory_file *last = NULL;
-	struct memory_file *second_last = NULL;
-	bool found = false;
-	info(deep, "Searching file '%s' in the list", filename);
-	while (ptr != NULL) {
-		if (second_last != NULL && lock) {
-			debug(deep, "Unlock second last link mod mutex on %p - search case",
-					second_last);
-			debug(deep, "Link mod mutex %p - search case", &second_last->link_mod_mutex);
-			returnCode = pthread_mutex_unlock(&second_last->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not release link mod mutex - search",
-					THREAD_EXIT);
-		}
-		if (last != NULL && !lock) {
-			debug(deep, "Unlock last link mod mutex on %p - search case", last);
-			debug(deep, "Link mod mutex %p - search case", &last->link_mod_mutex);
-			returnCode = pthread_mutex_unlock(&last->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not release link mod mutex - search",
-					THREAD_EXIT);
-		}
-		//TEST
-		debug(deep, "Unlock current link mod mutex on %p - search case", ptr);
-		debug(deep, "Link mod mutex %p - search case", &ptr->link_mod_mutex);
-		returnCode = pthread_mutex_unlock(&ptr->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not release link mod mutex - search",
-				THREAD_EXIT);
-		//TEST END
-		debug(deep, "Lock current link mod mutex on %p - search case", ptr);
-		debug(deep, "Link mod mutex %p - search case", &ptr->link_mod_mutex);
-		returnCode = pthread_mutex_lock(&ptr->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not lock link mod mutex - search",
-				THREAD_EXIT);
-		if (strcmp(ptr->filename, filename) == 0) {
-			debug(deep, "File '%s' found!", filename);
-			found = true;
-			break;
-		} else {
-			debug(deep, "Set second_last to: %p", last);
-			second_last = last;
-			debug(deep, "Set last to: %p", ptr);
-			last = ptr;
-			debug(deep, "Set ptr to: %p", ptr->next);
-			ptr = ptr->next;
-		}
-	}
-
-	if (second_last != NULL && lock) {
-		debug(deep, "Unlock second last link mod mutex on %p - search case",
-				second_last);
-		debug(deep, "Link mod mutex %p - search case", &second_last->link_mod_mutex);
-		returnCode = pthread_mutex_unlock(&second_last->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not release link mod mutex - search",
-				THREAD_EXIT);
-	}
-
-	if (prev) {
-		debug(deep, "Set previous: %p", last);
-		*prev = last;
-	}
-
-	if (true == found) {
-		if (ptr != NULL && !lock) {
-			debug(deep, "Unlock current link mod mutex on %p - search case", ptr);
-			debug(deep, "Link mod mutex %p - search case", &ptr->link_mod_mutex);
-			returnCode = pthread_mutex_unlock(&ptr->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not release link mod mutex - search",
-					THREAD_EXIT);
-		}
-		return ptr;
-	} else {
-		if (last != NULL && !lock) {
-			debug(deep, "Unlock last link mod mutex on %p - search case test", last);
-			debug(deep, "Link mod mutex %p - search case", &last->link_mod_mutex);
-			returnCode = pthread_mutex_unlock(&last->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not release link mod mutex - search",
-					THREAD_EXIT);
-		}
-		return NULL;
-	}
-}
-struct memory_file* create_memory_file(char *filename, int length,
-		char *content) {
-	const int deep = 4;
-	debug(deep, "Create new memory file");
-	struct memory_file *file = (struct memory_file*) malloc(
-			sizeof(struct memory_file));
-	if (NULL == file) {
-		error(deep, "Node creation failed");
-		return NULL;
-	}
-	file->filename = filename;
-	file->content = content;
-	file->length = length;
-	file->next = NULL;
-
-	int returnCode;
-	debug(deep, "Init link mod mutex");
-	pthread_mutex_t mutex;
-	returnCode = pthread_mutex_init(&mutex, NULL);
-	handle_thread_error(returnCode, "Could not init link mod mutex",
-			THREAD_EXIT);
-	file->link_mod_mutex = mutex;
-
-	debug(deep, "Init rwlock mutex");
-	pthread_rwlock_t rwlock;
-	returnCode = pthread_rwlock_init(&rwlock, NULL);
-	handle_thread_error(returnCode, "Could not init rwlock mutex", THREAD_EXIT);
-	file->rwlock = rwlock;
-
-	debug(deep, "New memory file %p created", file);
-	return file;
-}
-struct memory_file* add_memory_file(char *filename, int length, char *content) {
-	const int deep = 3;
-	struct memory_file *ptr = create_memory_file(filename, length, content);
-	struct memory_file *endNode = NULL;
-	struct memory_file* file = search_file(filename, &endNode, TRUE);
-	debug(deep, "Test add %p", file);
-	if (file == NULL) {
-		info(deep, "Adding file '%s' to the end of the list", filename);
-		debug(deep, "Set next pointer of %p to new file %p", endNode, ptr);
-		endNode->next = ptr;
-	} else {
-		info(deep, "File '%s' already exist", filename);
-		ptr = NULL;
-	}
-
-	debug(deep, "Unlock list mod mutex on %p - create case", endNode);
-	int returnCode = pthread_mutex_unlock(&endNode->link_mod_mutex);
-	handle_thread_error(returnCode, "Could not release list mod mutex - create",
-			THREAD_EXIT);
-	return ptr;
-}
-
-int delete_memory_file(char* filename) {
-	const int deep = 3;
-	struct memory_file *prev = NULL;
-	struct memory_file *del = NULL;
-
-	info(deep, "Deleting file '%s' from list", filename);
-
-	int returnCode;
-	int rv = 0;
-
-	del = search_file(filename, &prev, TRUE);
-	if (del == NULL) {
-		rv = -1;
-	} else {
-		prev->next = del->next;
-	}
-	debug(deep, "Unlock link mod mutex on %p - delete case", prev);
-	returnCode = pthread_mutex_unlock(&prev->link_mod_mutex);
-	handle_thread_error(returnCode, "Could not release link mod mutex - delete",
-			THREAD_EXIT);
-	if (rv != -1) {
-		free(del);
-		del = NULL;
-		rv = 0;
-	}
-
-	return rv;
-}
-
-int list_memory_file(char *file_list) {
-	const int deep = 3;
-	struct memory_file *ptr = head;
-	int returnCode;
-	int file_counter = 0;
-	char *tmp_file_list = "";
-	info(deep, "Go trough files");
-	debug(deep, "Test list");
-	while (ptr != NULL) {
-		debug(deep, "Lock link mod mutex on %p - list case", ptr);
-		returnCode = pthread_mutex_lock(&ptr->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not lock link mod mutex",
-				THREAD_EXIT);
-
-		char *filename = ptr->filename;
-		debug(deep, "Found file '%s'", filename);
-		if (file_counter == 0) {
-			tmp_file_list = append_strings(tmp_file_list, filename);
-		} else {
-			tmp_file_list = append_strings(tmp_file_list, "\n");
-			tmp_file_list = append_strings(tmp_file_list, filename);
-		}
-		ptr = ptr->next;
-		debug(deep, "Release link mod mutex on %p - list case", ptr);
-		returnCode = pthread_mutex_unlock(&ptr->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not release link mod mutex",
-				THREAD_EXIT);
-		file_counter++;
-	}
-	strcpy(file_list, tmp_file_list);
-
-	return file_counter;
 }
 
 char *create_file(char *msg) {
@@ -520,8 +336,8 @@ char *create_file(char *msg) {
 		error(deep, "Message length is not correct!");
 		return ANSWER_INVALID;
 	}
-	struct memory_file* file = add_memory_file(filename, length, content);
-	if (file != NULL) {
+
+	if (add_memory_file(filename, length, content)) {
 		return ANSWER_SUCCESS_CREATE;
 	} else {
 		error(deep, "Could not create file");
@@ -535,7 +351,6 @@ char *update_file(char *msg) {
 	char filename[4096];
 	char org_length_str[5];
 	char content[4096];
-	int returnCode;
 
 	const char *update_regex_text =
 			"UPDATE[[:blank:]]+([[:alnum:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
@@ -551,25 +366,13 @@ char *update_file(char *msg) {
 	debug(deep, "Length: %d", orig_length);
 	debug(deep, "Content: %s", content);
 
-	info(deep, "Update file %s", filename);
 	int length = strlen(content);
 	if (length != orig_length) {
 		error(deep, "Message length is not correct!");
 		return ANSWER_INVALID;
 	}
-	struct memory_file* file = search_file(filename, NULL, FALSE);
-	if (file != NULL) {
-		debug(deep, "Lock rw mutex on %p - update case", file);
-		returnCode = pthread_rwlock_wrlock(&file->rwlock);
-		handle_thread_error(returnCode, "Could not lock rw mutex", THREAD_EXIT);
 
-		file->length = length;
-		file->content = content;
-
-		debug(deep, "Release rw mutex on %p - update case", file);
-		returnCode = pthread_rwlock_unlock(&file->rwlock);
-		handle_thread_error(returnCode, "Could not release rw mutex",
-				THREAD_EXIT);
+	if (update_memory_file(filename, length, content)) {
 		return ANSWER_SUCCESS_UPDATE;
 	}
 	return ANSWER_FAILED_UPDATE;
@@ -599,7 +402,6 @@ char *delete_file(char *msg) {
 char *read_file(char *msg) {
 	const int deep = 2;
 	regex_t r;
-	int returnCode;
 	char filename[4096];
 
 	const char *read_regex_text = "READ[[:blank:]]+([[:alnum:]]+)";
@@ -611,14 +413,10 @@ char *read_file(char *msg) {
 		return ANSWER_UNKOWN;
 	}
 
-	info(deep, "Read file %s", filename);
-	struct memory_file* file = search_file(filename, NULL, FALSE);
-	if (file != NULL) {
-		debug(deep, "Lock rw mutex on %p - read case", file);
-		returnCode = pthread_rwlock_wrlock(&file->rwlock);
-		handle_thread_error(returnCode, "Could not lock rw mutex - read", THREAD_EXIT);
-		char* content;
-		if ((content = file->content) != NULL) {
+	char* returnValue;
+	char content[0];
+	if (read_memory_file(filename, content)) {
+		if (content != NULL) {
 			debug(deep, "Content of file: %s", content);
 			int length = strlen(content);
 			char len_string[15];
@@ -629,17 +427,15 @@ char *read_file(char *msg) {
 			rv = append_strings(rv, "\n");
 			rv = append_strings(rv, content);
 			rv = append_strings(rv, "\n");
-			return rv;
+			returnValue = rv;
 		} else {
 			error(deep, "Could not read file");
-			return ANSWER_INTERNAL_ERROR;
+			returnValue = ANSWER_INTERNAL_ERROR;
 		}
-		debug(deep, "Release rw mutex on %p - read case", file);
-		returnCode = pthread_rwlock_unlock(&file->rwlock);
-		handle_thread_error(returnCode, "Could not release rw mutex - read",
-				THREAD_EXIT);
+	} else {
+		returnValue = ANSWER_FAILED_READ;
 	}
-	return ANSWER_FAILED_READ;
+	return returnValue;
 }
 
 char *list_files(char *msg) {
