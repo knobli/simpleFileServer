@@ -1,4 +1,4 @@
-CFLAGS=-march=native -Wall -std=gnu99 -g -O2 -I./include -L./lib
+CFLAGS=-march=native -Wall -rdynamic -std=gnu99 -g -O2 -I./include -L./lib
 LIBS=-lpthread -lfileserver
 
 MYSERVER_SOURCE=src/server.c
