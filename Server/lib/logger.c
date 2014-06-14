@@ -7,6 +7,7 @@
 
 #include <logger.h>
 
+#include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +16,7 @@
 
 #define MAX_MSG_LEN 1024
 
-static const int LOG_LEVEL = DEBUG;
+static size_t LOG_LEVEL = INFO;
 
 char * append_strings(const char * old, const char * new) {
 	// find the size of the string to allocate
@@ -52,63 +53,87 @@ char *mk_readable(char* string) {
 }
 
 void log_msg(const char* tag, int deep, char* message) {
-	long thread_id =(long) pthread_self();
+	long thread_id = (long) pthread_self();
 	time_t now;
 	time(&now);
 	char *saveptr;
 	char *timestamp = strtok_r(ctime(&now), "\n", &saveptr);
 	message = mk_readable(message);
 	int i;
-	for(i = 0; i < deep; i++){
-		message = append_strings("  ",message);
+	for (i = 0; i < deep; i++) {
+		message = append_strings("  ", message);
 	}
 	printf("%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
 }
 
-void debug(int deep, const char* message, ...) {
+void log_err(const char* tag, int deep, char* message) {
+	long thread_id = (long) pthread_self();
+	time_t now;
+	time(&now);
+	char *saveptr;
+	char *timestamp = strtok_r(ctime(&now), "\n", &saveptr);
+	message = mk_readable(message);
+	int i;
+	for (i = 0; i < deep; i++) {
+		message = append_strings("  ", message);
+	}
+	fprintf(stderr, "%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
+}
+
+bool debug(int deep, const char* message, ...) {
 	if (LOG_LEVEL < DEBUG) {
-		return;
+		return false;
 	}
-	va_list listPointer;
-	char logLine[MAX_MSG_LEN];
-	va_start(listPointer, message);
-	vsprintf(logLine, message, listPointer);
-	va_end(listPointer);
-	log_msg("DEBUG", deep, logLine);
+	va_list args;
+	char log_line[strlen(message) + MAX_MSG_LEN];
+	va_start(args, message);
+	vsprintf(log_line, message, args);
+	va_end(args);
+	log_msg("DEBUG", deep, log_line);
+	return true;
 }
 
-void info(int deep, const char* message, ...) {
+bool info(int deep, const char* message, ...) {
 	if (LOG_LEVEL < INFO) {
-		return;
+		return false;
 	}
-	va_list listPointer;
-	char logLine[MAX_MSG_LEN];
-	va_start(listPointer, message);
-	vsprintf(logLine, message, listPointer);
-	va_end(listPointer);
-	log_msg("INFO ", deep, logLine);
+	va_list args;
+	char log_line[strlen(message) + MAX_MSG_LEN];
+	va_start(args, message);
+	vsprintf(log_line, message, args);
+	va_end(args);
+	log_msg("INFO ", deep, log_line);
+	return true;
 }
 
-void warn(int deep, const char* message, ...) {
+bool warn(int deep, const char* message, ...) {
 	if (LOG_LEVEL < WARN) {
-		return;
+		return false;
 	}
-	va_list listPointer;
-	char logLine[MAX_MSG_LEN];
-	va_start(listPointer, message);
-	vsprintf(logLine, message, listPointer);
-	va_end(listPointer);
-	log_msg("WARN ", deep, logLine);
+	va_list args;
+	char log_line[strlen(message) + MAX_MSG_LEN];
+	va_start(args, message);
+	vsprintf(log_line, message, args);
+	va_end(args);
+	log_msg("WARN ", deep, log_line);
+	return true;
 }
 
-void error(int deep, const char* message, ...) {
+bool error(int deep, const char* message, ...) {
 	if (LOG_LEVEL < ERROR) {
-		return;
+		return false;
 	}
-	va_list listPointer;
-	char logLine[MAX_MSG_LEN];
-	va_start(listPointer, message);
-	vsprintf(logLine, message, listPointer);
-	va_end(listPointer);
-	log_msg("ERROR", deep, logLine);
+	va_list args;
+	char log_line[strlen(message) + MAX_MSG_LEN];
+	va_start(args, message);
+	vsprintf(log_line, message, args);
+	va_end(args);
+	log_err("ERROR", deep, log_line);
+	return true;
+}
+
+bool set_log_lvl(size_t lvl) {
+	info(0, "Set log level to %zu", lvl);
+	LOG_LEVEL = lvl;
+	return true;
 }

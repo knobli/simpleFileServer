@@ -11,9 +11,6 @@
 #include <time.h>
 #include <fcntl.h>
 
-#define TRUE 1
-#define FALSE 0
-
 #define MAX_BLOCK_COUNT 100000
 #define MAX_BLOCK_SIZE  100000
 
@@ -31,8 +28,6 @@ void handle_thread_error(int retcode, const char *msg, enum exit_type et);
 void handle_error(long return_code, const char *msg, enum exit_type et);
 
 void handle_error_myerrno(long return_code, int myerrno, const char *msg, enum exit_type et);
-
-void handle_ptr_error(void *ptr, const char *msg, enum exit_type et);
 
 #endif
 

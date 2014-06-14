@@ -50,5 +50,10 @@ void write_eot(int client_socket);
 /* the caller has to free the buffer, unless ulen == 0 */
 size_t read_and_store_string(int client_socket, char **result);
 
+char *create_file(const char *msg);
+char *update_file(const char *msg);
+char *delete_file(const char *msg);
+char *read_file(const char *msg);
+char *list_files(const char *msg);
 
 #endif

@@ -8,13 +8,18 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-char * append_strings(const char * old, const char * new);
+#include <stdbool.h>
+#include <stddef.h>
+
+char *append_strings(const char * old, const char * new);
 char *mk_readable(char* string);
 
-void debug(int deep, const char* message, ...);
-void info(int deep, const char* message, ...);
-void warn(int deep, const char* message, ...);
-void error(int deep, const char* message, ...);
+bool debug(int deep, const char* message, ...);
+bool info(int deep, const char* message, ...);
+bool warn(int deep, const char* message, ...);
+bool error(int deep, const char* message, ...);
+
+bool set_log_lvl(size_t lvl);
 
 #define DEBUG 4
 #define INFO 3

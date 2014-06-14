@@ -8,11 +8,14 @@
 #ifndef THREAD_LINKED_LIST_H_
 #define THREAD_LINKED_LIST_H_
 
-void init_thread_linked_list();
+#include <stdbool.h>
+#include <stddef.h>
 
-int add_thread_element(int thread_idx, pthread_t thread);
+bool init_thread_linked_list();
 
-int clean_up_threads();
+bool add_thread_element(size_t thread_idx, pthread_t *thread);
+
+size_t clean_up_threads();
 
 
 #endif /* THREAD_LINKED_LIST_H_ */

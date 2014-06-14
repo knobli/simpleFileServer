@@ -12,16 +12,15 @@
 
 #include <arpa/inet.h>  /* for sockaddr_in and inet_addr() and inet_ntoa() */
 #include <errno.h>
-//#include <netinet/in.h>
-//#include <netinet/tcp.h>
-//#include <stdbool.h>
 #include <stdio.h>      /* for printf() and fprintf() and ... */
 #include <stdlib.h>     /* for atoi() and exit() and ... */
 #include <string.h>     /* for memset() and ... */
-//#include <sys/socket.h> /* for socket(), bind(), recv, send(), and connect() */
 #include <sys/types.h>
 #include <unistd.h>     /* for close() */
+#include <regex.h>
 
+#include <regex-handle.h>
+#include <file-linked-list.h>
 #include <serverlib.h>
 #include <logger.h>
 #include <transmission-protocols.h>
@@ -77,4 +76,165 @@ size_t read_and_store_string(int client_socket, char **result) {
 	*result = (char *) malloc(bytes_received + 1);
 	strncpy(*result, buffer, bytes_received + 1);
 	return bytes_received;
+}
+
+char *create_file(const char *msg) {
+	const int deep = 2;
+	regex_t r;
+	char filename[4096];
+	char org_length_str[5];
+	char content[4096];
+
+	const char * create_regex_text =
+			"CREATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	compile_regex(&r, create_regex_text);
+	int retCode = match_regex(&r, msg, filename, org_length_str, content);
+	regfree(&r);
+	if (!retCode) {
+		error(deep, "Message '%s' does not match to regex!", msg);
+		return ANSWER_UNKOWN;
+	}
+	int orig_length = atoi(org_length_str);
+	debug(deep, "Filename: %s", filename);
+	debug(deep, "Length: %d", orig_length);
+	debug(deep, "Content: %s", content);
+
+	info(deep, "Create file %s", filename);
+	int length = strlen(content);
+	if (length != orig_length) {
+		error(deep, "Message length is not correct!");
+		return ANSWER_INVALID;
+	}
+
+	if (add_memory_file(filename, length, content)) {
+		return ANSWER_SUCCESS_CREATE;
+	} else {
+		error(deep, "Could not create file");
+		return ANSWER_FAILED_CREATE;
+	}
+}
+
+char *update_file(const char *msg) {
+	const int deep = 2;
+	regex_t r;
+	char filename[4096];
+	char org_length_str[5];
+	char content[4096];
+
+	const char *update_regex_text =
+			"UPDATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	compile_regex(&r, update_regex_text);
+	int retCode = match_regex(&r, msg, filename, org_length_str, content);
+	regfree(&r);
+	if (!retCode) {
+		error(deep, "Message '%s' does not match to regex!", msg);
+		return ANSWER_UNKOWN;
+	}
+	int orig_length = atoi(org_length_str);
+	debug(deep, "Filename: %s", filename);
+	debug(deep, "Length: %d", orig_length);
+	debug(deep, "Content: %s", content);
+
+	int length = strlen(content);
+	if (length != orig_length) {
+		error(deep, "Message length is not correct!");
+		return ANSWER_INVALID;
+	}
+
+	if (update_memory_file(filename, length, content)) {
+		return ANSWER_SUCCESS_UPDATE;
+	}
+	return ANSWER_FAILED_UPDATE;
+}
+
+char *delete_file(const char *msg) {
+	const int deep = 2;
+	regex_t r;
+	char filename[4096];
+
+	const char *delete_regex_text = "DELETE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:cntrl:]]+";
+	compile_regex(&r, delete_regex_text);
+	int retCode = match_regex(&r, msg, filename, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error(deep, "Message '%s' does not match to regex!", msg);
+		return ANSWER_UNKOWN;
+	}
+
+	info(deep, "Delete file %s", filename);
+	if (delete_memory_file(filename)) {
+		return ANSWER_SUCCESS_DELETE;
+	}
+	return ANSWER_FAILED_DELETE;
+}
+
+char *read_file(const char *msg) {
+	const int deep = 2;
+	regex_t r;
+	char filename[4096];
+
+	const char *read_regex_text = "READ[[:blank:]]+([[:graph:]|[:blank:]]+)[[:cntrl:]]+";
+	compile_regex(&r, read_regex_text);
+	int retCode = match_regex(&r, msg, filename, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error(deep, "Message '%s' does not match to regex!", msg);
+		return ANSWER_UNKOWN;
+	}
+
+	char *returnValue;
+	char *content;
+	if (read_memory_file(filename, &content)) {
+		if (content != NULL) {
+			debug(deep, "Content of file: %s", content);
+			int length = strlen(content);
+			char len_string[15];
+			sprintf(len_string, "%d", length);
+			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);
+			rv = append_strings(rv, " ");
+			rv = append_strings(rv, len_string);
+			rv = append_strings(rv, "\n");
+			rv = append_strings(rv, content);
+			rv = append_strings(rv, "\n");
+			returnValue = rv;
+		} else {
+			error(deep, "Could not read file");
+			returnValue = ANSWER_INTERNAL_ERROR;
+		}
+	} else {
+		returnValue = ANSWER_FAILED_READ;
+	}
+	free(content);
+	return returnValue;
+}
+
+char *list_files(const char *msg) {
+	const int deep = 2;
+	regex_t r;
+
+	const char *list_regex_text = "LIST[[:cntrl:]]+";
+	compile_regex(&r, list_regex_text);
+	int retCode = match_regex(&r, msg, NULL, NULL, NULL);
+	regfree(&r);
+	if (!retCode) {
+		error(deep, "Message '%s' does not match to regex!", msg);
+		return ANSWER_UNKOWN;
+	}
+
+	info(deep, "List files");
+	char *file_list;
+	int file_counter = list_memory_file(&file_list);
+
+	debug(deep, "Output from list method: %s", file_list);
+	char str[15];
+	sprintf(str, "%d", file_counter);
+	char *rv = append_strings(ANSWER_SUCCESS_LIST, str);
+	rv = append_strings(rv, "\n");
+	if(file_counter > 0){
+		rv = append_strings(rv, file_list);
+		rv = append_strings(rv, "\n");
+	}
+
+	free(file_list);
+	return rv;
 }

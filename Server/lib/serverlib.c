@@ -73,9 +73,3 @@ void handle_error(long return_code, const char *msg, enum exit_type et) {
 	int myerrno = errno;
 	handle_error_myerrno(return_code, myerrno, msg, et);
 }
-
-void handle_ptr_error(void *ptr, const char *msg, enum exit_type et) {
-	if (ptr == NULL) {
-		handle_error(-1L, msg, et);
-	}
-}
