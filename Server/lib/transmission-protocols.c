@@ -78,6 +78,39 @@ size_t read_and_store_string(int client_socket, char **result) {
 	return bytes_received;
 }
 
+char *select_strategy(const char *msg){
+	int deep = 1;
+	debug(deep, "Received string: '%s'", msg);
+	info(deep, "Select strategy");
+	unsigned char action = msg[0];
+
+	char *result;
+
+	switch (action) {
+	case COMMAND_CREATE:
+		result = create_file(msg);
+		break;
+	case COMMAND_UPDATE:
+		result = update_file(msg);
+		break;
+	case COMMAND_DELETE:
+		result = delete_file(msg);
+		break;
+	case COMMAND_READ:
+		result = read_file(msg);
+		break;
+	case COMMAND_LIST:
+		result = list_files(msg);
+		break;
+	default:
+		result = ANSWER_UNKOWN;
+		error(deep, "Wrong action %c", action);
+	}
+
+	info(deep, "Return value: '%s'", result);
+	return result;
+}
+
 char *create_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
@@ -189,11 +222,9 @@ char *read_file(const char *msg) {
 			debug(deep, "Content of file: %s", content);
 			int length = strlen(content);
 			char len_string[15];
-			sprintf(len_string, "%d", length);
+			sprintf(len_string, " %d\n", length);
 			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);
-			rv = append_strings(rv, " ");
 			rv = append_strings(rv, len_string);
-			rv = append_strings(rv, "\n");
 			rv = append_strings(rv, content);
 			rv = append_strings(rv, "\n");
 			returnValue = rv;
@@ -225,7 +256,7 @@ char *list_files(const char *msg) {
 	char *file_list;
 	int file_counter = list_memory_file(&file_list);
 
-	debug(deep, "Output from list method: %s", file_list);
+	//debug(deep, "Output from list method: %s", file_list);
 	char str[15];
 	sprintf(str, "%d", file_counter);
 	char *rv = append_strings(ANSWER_SUCCESS_LIST, str);

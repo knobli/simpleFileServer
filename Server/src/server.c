@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <signal.h>
 
 #include "../lib/util.c"
@@ -32,11 +31,8 @@ struct thread_arg {
 };
 
 int server_socket; /* Socket descriptor for server */
-pthread_t *cleanup_thread;
-bool clean_threads = true;
 
 void *thread_run(void *ptr);
-void *thread_cleanup_run(void *ptr);
 
 void usage(char *argv0, char *msg) {
 	const int deep = 0;
@@ -46,13 +42,6 @@ void usage(char *argv0, char *msg) {
 	printf("starts the file server listening on the given port\n");
 	printf("%s <port> (default: 7000)\n\n", argv0);
 	exit(1);
-}
-
-void stop_cleanup_threads() {
-	const int deep = 1;
-	debug(deep, "Stop clean running threads");
-	clean_threads = false;
-	pthread_join(*cleanup_thread, NULL);
 }
 
 void cleanup() {
@@ -95,15 +84,7 @@ int main(int argc, char **argv) {
 	}
 
 	init_linked_list();
-	init_thread_linked_list();
-
-	/* create cleanup thread: */
-	cleanup_thread = (pthread_t *) malloc(sizeof(pthread_t));
-	if (pthread_create(cleanup_thread, NULL, (void*) thread_cleanup_run, NULL) != 0) {
-		error(deep, "pthread_create for cleanup thread failed");
-	} else {
-		debug(deep, "pthread_create for cleanup thread success");
-	}
+	init_thread_linked_list(true);
 
 	int client_socket; /* Socket descriptor for client */
 	struct sockaddr_in server_address; /* Local address */
@@ -125,8 +106,7 @@ int main(int argc, char **argv) {
 
 	/* Bind to the local address */
 	debug(deep, "Bind Server Socket");
-	retcode = bind(server_socket, (struct sockaddr *) &server_address,
-			sizeof(server_address));
+	retcode = bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address));
 	handle_error(retcode, "bind() failed", PROCESS_EXIT);
 
 	/* Mark the socket so it will listen for incoming connections */
@@ -138,23 +118,20 @@ int main(int argc, char **argv) {
 	int idx = 1;
 	while (true) { /* Run forever */
 		/* Wait for a client to connect */
-		client_socket = accept(server_socket,
-				(struct sockaddr *) &client_address, &client_address_len);
+		client_socket = accept(server_socket, (struct sockaddr *) &client_address, &client_address_len);
 		handle_error(client_socket, "accept() failed", PROCESS_EXIT);
 
 		/* client_socket is connected to a client! */
 		info(deep, "Client connected");
 
 		thread = (pthread_t *) malloc(sizeof(pthread_t));
-		struct thread_arg *thread_data = (struct thread_arg *) malloc(
-				sizeof(struct thread_arg));
+		struct thread_arg *thread_data = (struct thread_arg *) malloc(sizeof(struct thread_arg));
 
 		thread_data->client_socket = client_socket;
 		thread_data->thread_idx = idx;
 
 		/* create thread: */
-		if (pthread_create(thread, NULL, (void*) thread_run,
-				(void*) thread_data) != 0) {
+		if (pthread_create(thread, NULL, (void*) thread_run, (void*) thread_data) != 0) {
 			error(deep, "pthread_create failed");
 		} else {
 			debug(deep, "pthread_create success");
@@ -165,17 +142,6 @@ int main(int argc, char **argv) {
 	}
 	/* never going to happen */
 	exit(1);
-}
-
-void *thread_cleanup_run(void *ptr) {
-	const int deep = 1;
-	debug(deep, "Cleanup thread started");
-	while(clean_threads){
-		sleep(2);
-		info(deep, "Start cleanup running threads");
-		clean_up_threads();
-	}
-	return (void *) NULL;
 }
 
 void *thread_run(void *ptr) {
@@ -191,35 +157,7 @@ void *thread_run(void *ptr) {
 	size_t msg_length = read_and_store_string(client_socket, &buffer_ptr);
 	handle_error(msg_length, "receive failed", THREAD_EXIT);
 
-	debug(deep, "Received string: '%s'", buffer_ptr);
-	info(deep, "Select strategy");
-	char *actionPointer = buffer_ptr;
-	unsigned char action = actionPointer[0];
-
-	char *result = (char*) malloc(10000 * sizeof(char));
-	;
-	switch (action) {
-	case COMMAND_CREATE:
-		result = create_file(buffer_ptr);
-		break;
-	case COMMAND_UPDATE:
-		result = update_file(buffer_ptr);
-		break;
-	case COMMAND_DELETE:
-		result = delete_file(buffer_ptr);
-		break;
-	case COMMAND_READ:
-		result = read_file(buffer_ptr);
-		break;
-	case COMMAND_LIST:
-		result = list_files(buffer_ptr);
-		break;
-	default:
-		result = ANSWER_UNKOWN;
-		error(deep, "Wrong action %c", action);
-	}
-
-	info(deep, "Return value: '%s' to client socket %d", result, client_socket);
+	char *result = select_strategy(buffer_ptr);
 
 	write_string(client_socket, result);
 

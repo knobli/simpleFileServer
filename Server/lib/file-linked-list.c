@@ -78,9 +78,9 @@ struct memory_file* search_file(const char *filename, struct memory_file **prev)
 	while (ptr != NULL) {
 		//unlock second last file
 		if (second_last != NULL) {
-			debug(deep, "Unlock second last link mod mutex on %p - search case", second_last);
+			finest(deep, "Unlock second last link mod mutex on %p - search case", second_last);
 			returnCode = pthread_mutex_unlock(&second_last->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not unlock link mod mutex - search", THREAD_EXIT);
+			handle_thread_error(returnCode, "Could not unlock second last link mod mutex - search", THREAD_EXIT);
 		}
 
 		//Lock current file
@@ -94,9 +94,9 @@ struct memory_file* search_file(const char *filename, struct memory_file **prev)
 			found = true;
 
 			//unlock current file, because only pointer to current file has to be locked
-			debug(deep, "Unlock matching link mod mutex on %p - search case", ptr);
+			finest(deep, "Unlock matching link mod mutex on %p - search case", ptr);
 			returnCode = pthread_mutex_unlock(&ptr->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not unlock link mod mutex - search", THREAD_EXIT);
+			handle_thread_error(returnCode, "Could not unlock matching link mod mutex - search", THREAD_EXIT);
 			break;
 		} else {
 			//file name does not match, go one step forward
@@ -108,9 +108,9 @@ struct memory_file* search_file(const char *filename, struct memory_file **prev)
 
 	//unlock second_last after while loop
 	if (second_last != NULL) {
-		debug(deep, "Unlock second last link mod mutex on %p - search case", second_last);
+		finest(deep, "Unlock second last link mod mutex on %p - search case", second_last);
 		returnCode = pthread_mutex_unlock(&second_last->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not unlock link mod mutex - search", THREAD_EXIT);
+		handle_thread_error(returnCode, "Could not unlock second last link mod mutex out of loop - search", THREAD_EXIT);
 	}
 
 	debug(deep, "Set previous: %p", last);
@@ -234,6 +234,21 @@ bool delete_memory_file(const char* filename) {
 	returnCode = pthread_mutex_unlock(&prev->link_mod_mutex);
 	handle_thread_error(returnCode, "Could not unlock link mod mutex - delete", THREAD_EXIT);
 	if (rv) {
+		/*
+		debug(deep, "Lock rw mutex on %p - delete case", del);
+		returnCode = pthread_rwlock_wrlock(&del->rwlock);
+		handle_thread_error(returnCode, "Could not lock rw mutex - delete", THREAD_EXIT);
+
+		debug(deep, "Unlock rw mutex on %p - delete case", del);
+		returnCode = pthread_rwlock_unlock(&del->rwlock);
+		handle_thread_error(returnCode, "Could not unlock rw mutex - delete", THREAD_EXIT);
+
+		returnCode = pthread_mutex_destroy(&prev->link_mod_mutex);
+		handle_thread_error(returnCode, "Could not destroy link mod mutex - delete", THREAD_EXIT);
+
+		returnCode = pthread_rwlock_destroy(&del->rwlock);
+		handle_thread_error(returnCode, "Could not destroy rw mutex - delete", THREAD_EXIT);
+*/
 		debug(deep, "Free filename");
 		free(del->filename);
 		debug(deep, "Free content");
@@ -256,11 +271,11 @@ int list_memory_file(char **file_list) {
 	info(deep, "Go trough files");
 	while (ptr != NULL) {
 		if (last != NULL) {
-			debug(deep, "Unlock last link mod mutex on %p - list case", last);
+			finest(deep, "Unlock last link mod mutex on %p - list case", last);
 			returnCode = pthread_mutex_unlock(&last->link_mod_mutex);
-			handle_thread_error(returnCode, "Could not unlock link mod mutex", THREAD_EXIT);
+			handle_thread_error(returnCode, "Could not unlock last link mod mutex", THREAD_EXIT);
 		}
-		debug(deep, "Lock link mod mutex on %p - list case", ptr);
+		finest(deep, "Lock link mod mutex on %p - list case", ptr);
 		returnCode = pthread_mutex_lock(&ptr->link_mod_mutex);
 		handle_thread_error(returnCode, "Could not lock link mod mutex", THREAD_EXIT);
 
@@ -280,13 +295,13 @@ int list_memory_file(char **file_list) {
 		ptr = ptr->next;
 	}
 	if (last != NULL) {
-		debug(deep, "Unlock last link mod mutex on %p - list case", last);
+		finest(deep, "Unlock last link mod mutex on %p - list case", last);
 		returnCode = pthread_mutex_unlock(&last->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not unlock link mod mutex", THREAD_EXIT);
+		handle_thread_error(returnCode, "Could not unlock last link mod mutex out of loop", THREAD_EXIT);
 	}
 	size_t list_length = strlen(tmp_file_list) + 1;
 	*file_list = malloc(list_length);
 	strncpy(*file_list, tmp_file_list, list_length);
-
+	free(tmp_file_list);
 	return file_counter;
 }

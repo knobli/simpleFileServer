@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <logger.h>
 #include <serverlib.h>
@@ -25,11 +26,33 @@ pthread_mutex_t head_thread_mutex;
 struct thread_element *head_thread = NULL;
 struct thread_element *end_thread = NULL;
 
+pthread_t *cleanup_thread = NULL;
+bool clean_threads_flag = true;
+
+void *thread_cleanup_run(void *ptr) {
+	const int deep = 1;
+	debug(deep, "Cleanup thread started");
+	while (clean_threads_flag) {
+		sleep(2);
+		info(deep, "Start cleanup running threads");
+		cleanup_threads();
+	}
+	return (void *) NULL;
+}
+
+void stop_cleanup_threads() {
+	const int deep = 1;
+	debug(deep, "Stop clean running threads");
+	clean_threads_flag = false;
+	if (cleanup_thread != NULL) {
+		pthread_join(*cleanup_thread, NULL);
+	}
+}
+
 struct thread_element* create_thread_element(size_t thread_idx, pthread_t *thread) {
 	const int deep = 4;
 	debug(deep, "Create thread element");
-	struct thread_element *thread_element = (struct thread_element*) malloc(
-			sizeof(struct thread_element));
+	struct thread_element *thread_element = (struct thread_element*) malloc(sizeof(struct thread_element));
 	if (NULL == thread_element) {
 		error(deep, "Thread node creation failed");
 		return NULL;
@@ -42,7 +65,7 @@ struct thread_element* create_thread_element(size_t thread_idx, pthread_t *threa
 	return thread_element;
 }
 
-bool init_thread_linked_list() {
+bool init_thread_linked_list(bool start_cleanup) {
 	int deep = 1;
 	debug(deep, "Init thread linked list");
 	head_thread = create_thread_element(0, 0);
@@ -51,8 +74,18 @@ bool init_thread_linked_list() {
 	int returnCode;
 	debug(deep, "Init thread head link mod mutex");
 	returnCode = pthread_mutex_init(&head_thread_mutex, NULL);
-	handle_thread_error(returnCode, "Could not init link mod mutex",
-			THREAD_EXIT);
+	handle_thread_error(returnCode, "Could not init link mod mutex", THREAD_EXIT);
+
+	if (start_cleanup) {
+		/* create cleanup thread: */
+		cleanup_thread = (pthread_t *) malloc(sizeof(pthread_t));
+		if (pthread_create(cleanup_thread, NULL, (void*) thread_cleanup_run, NULL) != 0) {
+			error(deep, "pthread_create for cleanup thread failed");
+		} else {
+			debug(deep, "pthread_create for cleanup thread success");
+		}
+	}
+
 	return true;
 }
 
@@ -64,8 +97,7 @@ bool add_thread_element(size_t thread_idx, pthread_t *thread) {
 
 	debug(deep, "Lock head thread mutex - add case");
 	returnCode = pthread_mutex_lock(&head_thread_mutex);
-	handle_thread_error(returnCode,
-			"Could not lock link mod mutex - add", THREAD_EXIT);
+	handle_thread_error(returnCode, "Could not lock link mod mutex - add", THREAD_EXIT);
 
 	info(deep, "Adding thread element '%d' to the beginning of the list", thread_idx);
 	head_thread->prev = thread_element;
@@ -73,12 +105,11 @@ bool add_thread_element(size_t thread_idx, pthread_t *thread) {
 
 	debug(deep, "Unlock head thread mutex - add case");
 	returnCode = pthread_mutex_unlock(&head_thread_mutex);
-	handle_thread_error(returnCode, "Could not release list mod mutex - create",
-			THREAD_EXIT);
+	handle_thread_error(returnCode, "Could not release list mod mutex - create", THREAD_EXIT);
 	return true;
 }
 
-size_t clean_up_threads() {
+size_t cleanup_threads() {
 	const int deep = 3;
 	size_t threads_joined = 0;
 	struct thread_element *ptr = end_thread->prev;
@@ -90,27 +121,30 @@ size_t clean_up_threads() {
 		pthread_join(*ptr->thread, NULL);
 		threads_joined++;
 
-		if(ptr->prev == NULL){
+		if (ptr->prev == NULL) {
 			debug(deep, "Special case: remove last element from list");
 			debug(deep, "Lock head thread link mod mutex - cleanup case");
-			returnCode = pthread_mutex_lock(&head_thread_mutex);
-			handle_thread_error(returnCode, "Could not lock link mod mutex - cleanup",
-					THREAD_EXIT);
+			if (pthread_mutex_trylock(&head_thread_mutex) == 0) {
+				last->prev = ptr->prev;
+
+				debug(deep, "Set initial element as head of list");
+				head_thread = last;
+
+				free(ptr->thread);
+				free(ptr);
+
+				debug(deep, "Unlock head thread link mod mutex - cleanup case");
+				returnCode = pthread_mutex_unlock(&head_thread_mutex);
+				handle_thread_error(returnCode, "Could not lock link mod mutex - cleanup", THREAD_EXIT);
+			} else {
+				error(deep, "Could not lock head thread link mod mutex, will come later!");
+			}
+		} else {
+			last->prev = ptr->prev;
+
+			free(ptr->thread);
+			free(ptr);
 		}
-
-		last->prev = ptr->prev;
-
-		if(ptr->prev == NULL){
-			debug(deep, "Set initial element as head of list");
-			head_thread = last;
-
-			debug(deep, "Unlock head thread link mod mutex - cleanup case");
-			returnCode = pthread_mutex_unlock(&head_thread_mutex);
-			handle_thread_error(returnCode, "Could not lock link mod mutex - cleanup",
-					THREAD_EXIT);
-		}
-		free(ptr->thread);
-		free(ptr);
 
 		ptr = ptr->prev;
 	}

@@ -9,6 +9,9 @@ MYSERVER_FILE=server.o
 TESTER_SOURCE=test/tester.c
 TESTER_FILE=test/tester.o
 
+CONCURRENT_SOURCE=test/concurrent-load-test.c
+CONCURRENT_FILE=test/concurrent-load-test.o
+
 all: server
 
 clean:
@@ -45,7 +48,7 @@ lib/transmission-protocols.o: lib/transmission-protocols.c include/transmission-
 # Test part
 #######	
 	
-test: clean lib/libfileserver.a logger-test thread-link-test file-link-test server-test
+test: clean lib/libfileserver.a logger-test thread-link-test file-link-test server-test message-creator load-test
 	gcc $(CFLAGS) $(TEST_FLAGS) $(TESTER_SOURCE) $(LIBS) $(TEST_LIBS) -o $(TESTER_FILE)
 	$(TESTER_FILE)
 
@@ -59,4 +62,17 @@ file-link-test: test/file-linked-list-test.c lib/file-linked-list.o
 	gcc -c $(CFLAGS) test/file-linked-list-test.c -o test/file-linked-list-test.o
 	
 server-test: test/server-test.c lib/transmission-protocols.o
-	gcc -c $(CFLAGS) test/server-test.c -o test/server-test.o				
+	gcc -c $(CFLAGS) test/server-test.c -o test/server-test.o
+	
+message-creator: test/message-creator.c test/message-creator.h lib/logger.o
+	gcc -c $(CFLAGS) test/message-creator.c -o test/message-creator.o
+
+load-test: test/load-test.c test/message-creator.o lib/logger.o
+	gcc -c $(CFLAGS) test/load-test.c -o test/load-test.o
+
+#######
+# Concurrent test part
+#######	
+test-concurrent: clean lib/libfileserver.a message-creator
+	gcc $(CFLAGS) $(TEST_FLAGS) $(CONCURRENT_SOURCE) $(LIBS) $(TEST_LIBS) -o $(CONCURRENT_FILE)
+	$(CONCURRENT_FILE)								

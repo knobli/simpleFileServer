@@ -86,6 +86,21 @@ void test_messages_with_additional_args(){
 	CU_ASSERT_TRUE(debug(deep, message_template, number, test_string));
 }
 
+void test_append_strings(){
+	char *final_string = "";
+	char *string1 = "Bla";
+	char *string2 = "Test";
+	char *string3 = "End";
+	final_string=append_strings(final_string, string1);
+	final_string=append_strings(final_string, " ");
+	final_string=append_strings(final_string, string2);
+	final_string=append_strings(final_string, "\n");
+	final_string=append_strings(final_string, string3);
+	final_string=append_strings(final_string, "\n");
+	CU_ASSERT_STRING_EQUAL(final_string, "Bla Test\nEnd\n");
+	free(final_string);
+}
+
 void logger_test_suite() {
 	CU_pSuite logger_suite = CU_add_suite("logger", NULL, NULL);
 	CU_add_test(logger_suite, "test_debug_level", test_debug_level);
@@ -95,4 +110,5 @@ void logger_test_suite() {
 	CU_add_test(logger_suite, "test_long_message", test_long_message);
 	CU_add_test(logger_suite, "test_too_long_message", test_too_long_message);
 	CU_add_test(logger_suite, "test_messages_with_additional_args", test_messages_with_additional_args);
+	CU_add_test(logger_suite, "test_append_strings", test_append_strings);
 }

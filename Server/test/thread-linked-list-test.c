@@ -21,11 +21,13 @@ void *thread_run(void *ptr) {
 }
 
 void test_add_one_thread_element() {
+	CU_ASSERT_TRUE(init_thread_linked_list(false));
+
 	pthread_t *thread = (pthread_t *) malloc(sizeof(pthread_t));
-	CU_ASSERT_TRUE(init_thread_linked_list());
 	CU_ASSERT_EQUAL_FATAL(pthread_create(thread, NULL, (void*) thread_run, NULL), 0);
 	add_thread_element(1, thread);
-	CU_ASSERT_EQUAL(clean_up_threads(), 1);
+
+	CU_ASSERT_EQUAL(cleanup_threads(), 1);
 }
 
 void test_add_two_thread_element() {
@@ -37,7 +39,7 @@ void test_add_two_thread_element() {
 	CU_ASSERT_EQUAL_FATAL(pthread_create(thread2, NULL, (void*) thread_run, NULL), 0);
 	add_thread_element(3, thread2);
 
-	CU_ASSERT_EQUAL(clean_up_threads(), 2);
+	CU_ASSERT_EQUAL(cleanup_threads(), 2);
 }
 
 void thread_list_test_suite() {

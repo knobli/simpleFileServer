@@ -18,6 +18,8 @@
 #include "thread-linked-list-test.c"
 #include "file-linked-list-test.c"
 #include "server-test.c"
+#include "message-creator.c"
+#include "load-test.c"
 
 int main(int argc, char **argv) {
 	install_segfault_handler();
@@ -28,7 +30,9 @@ int main(int argc, char **argv) {
 	logger_test_suite();
 	thread_list_test_suite();
 	file_list_test_suite();
+	message_creator_test_suite();
 	server_test_suite();
+	load_test_suite();
 
 	CU_basic_run_tests();
 	CU_cleanup_registry();

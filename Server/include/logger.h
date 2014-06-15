@@ -12,8 +12,8 @@
 #include <stddef.h>
 
 char *append_strings(const char * old, const char * new);
-char *mk_readable(char* string);
 
+bool finest(int deep, const char* message, ...);
 bool debug(int deep, const char* message, ...);
 bool info(int deep, const char* message, ...);
 bool warn(int deep, const char* message, ...);
@@ -21,9 +21,11 @@ bool error(int deep, const char* message, ...);
 
 bool set_log_lvl(size_t lvl);
 
+#define FINEST 5
 #define DEBUG 4
 #define INFO 3
 #define WARN 2
 #define ERROR 1
+#define NONE 0
 
 #endif /* LOGGER_H_ */
