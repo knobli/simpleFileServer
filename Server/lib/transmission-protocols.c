@@ -133,7 +133,7 @@ char *create_file(const char *msg) {
 	debug(deep, "Content: %s", content);
 
 	info(deep, "Create file %s", filename);
-	int length = strlen(content);
+	int length = strlen(content) + 1;
 	if (length != orig_length) {
 		error(deep, "Message length is not correct!");
 		return ANSWER_INVALID;
@@ -168,7 +168,7 @@ char *update_file(const char *msg) {
 	debug(deep, "Length: %d", orig_length);
 	debug(deep, "Content: %s", content);
 
-	int length = strlen(content);
+	int length = strlen(content) + 1;
 	if (length != orig_length) {
 		error(deep, "Message length is not correct!");
 		return ANSWER_INVALID;
@@ -220,7 +220,7 @@ char *read_file(const char *msg) {
 	if (read_memory_file(filename, &content)) {
 		if (content != NULL) {
 			debug(deep, "Content of file: %s", content);
-			int length = strlen(content);
+			int length = strlen(content) + 1;
 			char len_string[15];
 			sprintf(len_string, " %d\n", length);
 			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);

@@ -31,7 +31,7 @@ bool clean_threads_flag = true;
 
 void *thread_cleanup_run(void *ptr) {
 	const int deep = 1;
-	debug(deep, "Cleanup thread started");
+	info(deep, "Cleanup thread started");
 	while (clean_threads_flag) {
 		sleep(2);
 		info(deep, "Start cleanup running threads");
@@ -61,7 +61,7 @@ struct thread_element* create_thread_element(size_t thread_idx, pthread_t *threa
 	thread_element->thread = thread;
 	thread_element->prev = NULL;
 
-	debug(deep, "New thread element %p created", thread_element);
+	finest(deep, "New thread element %p created", thread_element);
 	return thread_element;
 }
 
@@ -99,7 +99,7 @@ bool add_thread_element(size_t thread_idx, pthread_t *thread) {
 	returnCode = pthread_mutex_lock(&head_thread_mutex);
 	handle_thread_error(returnCode, "Could not lock link mod mutex - add", THREAD_EXIT);
 
-	info(deep, "Adding thread element '%d' to the beginning of the list", thread_idx);
+	debug(deep, "Adding thread element '%d' to the beginning of the list", thread_idx);
 	head_thread->prev = thread_element;
 	head_thread = thread_element;
 
@@ -117,7 +117,7 @@ size_t cleanup_threads() {
 	int returnCode;
 	info(deep, "Go trough thread elements");
 	while (ptr != NULL) {
-		info(deep, "Join thread '%d'", ptr->thread_idx);
+		debug(deep, "Join thread '%d'", ptr->thread_idx);
 		pthread_join(*ptr->thread, NULL);
 		threads_joined++;
 
@@ -148,5 +148,6 @@ size_t cleanup_threads() {
 
 		ptr = ptr->prev;
 	}
+	info(deep, "Joined %zu thread(s)", threads_joined);
 	return threads_joined;
 }

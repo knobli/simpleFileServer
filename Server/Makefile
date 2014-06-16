@@ -4,21 +4,28 @@ LIBS=-lpthread -lfileserver
 TEST_LIBS=-lcunit
 
 MYSERVER_SOURCE=src/server.c
-MYSERVER_FILE=server.o
+MYSERVER_FILE=src/server.o
 
-TESTER_SOURCE=test/tester.c
-TESTER_FILE=test/tester.o
+TESTER_SOURCE=tests/tester.c
+TESTER_FILE=tests/tester.o
 
-CONCURRENT_SOURCE=test/concurrent-load-test.c
-CONCURRENT_FILE=test/concurrent-load-test.o
+CLIENT_SOURCE=tests/client-test.c
+CLIENT_FILE=tests/client-test.o
 
-all: server
+CONCURRENT_SOURCE=tests/concurrent-load-test.c
+CONCURRENT_FILE=tests/concurrent-load-test.o
+
+all: server test-client
+	cp -fv $(MYSERVER_FILE) run
+	cp -fv $(CLIENT_FILE) test
 
 clean:
+	rm -fv run
+	rm -fv test
 	rm -fv lib/*.o
 	rm -fv lib/*.a
 	rm -fv src/*.o
-	rm -fv test/*.o
+	rm -fv tests/*.o
 
 server: $(MYSERVER_SOURCE) lib/libfileserver.a include/serverlib.h
 	gcc $(CFLAGS) $(MYSERVER_SOURCE) $(LIBS) -o $(MYSERVER_FILE)
@@ -43,6 +50,12 @@ lib/serverlib.o: lib/serverlib.c
 	
 lib/transmission-protocols.o: lib/transmission-protocols.c include/transmission-protocols.h lib/regex-handle.o
 	gcc -c $(CFLAGS) lib/transmission-protocols.c -o lib/transmission-protocols.o	
+
+#######
+# Client
+#######	
+test-client: lib/libfileserver.a message-creator
+	gcc $(CFLAGS) $(TEST_FLAGS) $(CLIENT_SOURCE) $(LIBS) $(TEST_LIBS) -o $(CLIENT_FILE)
 	
 #######
 # Test part
@@ -52,23 +65,23 @@ test: clean lib/libfileserver.a logger-test thread-link-test file-link-test serv
 	gcc $(CFLAGS) $(TEST_FLAGS) $(TESTER_SOURCE) $(LIBS) $(TEST_LIBS) -o $(TESTER_FILE)
 	$(TESTER_FILE)
 
-logger-test: test/logger-test.c lib/logger.o
-	gcc -c $(CFLAGS) test/logger-test.c -o test/logger-test.o
+logger-test: tests/logger-test.c lib/logger.o
+	gcc -c $(CFLAGS) tests/logger-test.c -o tests/logger-test.o
 	
-thread-link-test: test/thread-linked-list-test.c lib/thread-linked-list.o
-	gcc -c $(CFLAGS) test/thread-linked-list-test.c -o test/thread-linked-list-test.o
+thread-link-test: tests/thread-linked-list-test.c lib/thread-linked-list.o
+	gcc -c $(CFLAGS) tests/thread-linked-list-test.c -o tests/thread-linked-list-test.o
 	
-file-link-test: test/file-linked-list-test.c lib/file-linked-list.o
-	gcc -c $(CFLAGS) test/file-linked-list-test.c -o test/file-linked-list-test.o
+file-link-test: tests/file-linked-list-test.c lib/file-linked-list.o
+	gcc -c $(CFLAGS) tests/file-linked-list-test.c -o tests/file-linked-list-test.o
 	
-server-test: test/server-test.c lib/transmission-protocols.o
-	gcc -c $(CFLAGS) test/server-test.c -o test/server-test.o
+server-test: tests/server-test.c lib/transmission-protocols.o
+	gcc -c $(CFLAGS) tests/server-test.c -o tests/server-test.o
 	
-message-creator: test/message-creator.c test/message-creator.h lib/logger.o
-	gcc -c $(CFLAGS) test/message-creator.c -o test/message-creator.o
+message-creator: tests/message-creator.c tests/message-creator.h lib/logger.o
+	gcc -c $(CFLAGS) tests/message-creator.c -o tests/message-creator.o
 
-load-test: test/load-test.c test/message-creator.o lib/logger.o
-	gcc -c $(CFLAGS) test/load-test.c -o test/load-test.o
+load-test: tests/load-test.c tests/message-creator.o lib/logger.o
+	gcc -c $(CFLAGS) tests/load-test.c -o tests/load-test.o
 
 #######
 # Concurrent test part

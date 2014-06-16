@@ -16,7 +16,7 @@
 #include <pthread.h>
 
 #define MAX_MSG_LEN 4096
-//#define MAX_MSG_LEN 1024
+//TODO: all debug and other output to stderr
 
 static size_t LOG_LEVEL = INFO;
 

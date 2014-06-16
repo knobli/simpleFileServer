@@ -19,7 +19,7 @@
 char *create_content_message(const char *filename, const char *content) {
 	char *msg = "";
 	msg = append_strings(msg, filename);
-	size_t length = strlen(content);
+	size_t length = strlen(content) + 1;
 	char len_string[15];
 	sprintf(len_string, " %zu\n", length);
 	msg = append_strings(msg, len_string);
