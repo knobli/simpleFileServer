@@ -16,6 +16,8 @@
 *.exe
 *.out
 *.app
+run
+test
 
 .project
 .settings
@@ -24,3 +26,4 @@
 # Java
 target
 .classpath
+
