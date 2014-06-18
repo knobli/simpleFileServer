@@ -73,7 +73,7 @@ void crit_err_hdlr(int sig_num, siginfo_t * info, void * ucontext)
 
 void install_segfault_handler() {
     struct sigaction sigact;
-
+    memset(&sigact, 0, sizeof(sigact)); /* Zero out structure */
     sigact.sa_sigaction = crit_err_hdlr;
     sigact.sa_flags = SA_RESTART | SA_SIGINFO;
 
