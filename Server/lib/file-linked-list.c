@@ -46,6 +46,7 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 	int returnCode;
 	debug(deep, "Init link mod mutex");
 	pthread_mutex_t mutex;
+	memset(&mutex, 0, sizeof(mutex)); /* Zero out structure */
 	/* pthread_mutexattr_t psharedm;
 	pthread_mutexattr_init(&psharedm);
 	pthread_mutexattr_setpshared(&psharedm, PTHREAD_MUTEX_ERRORCHECK); */
@@ -55,6 +56,7 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 
 	debug(deep, "Init rwlock mutex");
 	pthread_rwlock_t rwlock;
+	memset(&rwlock, 0, sizeof(rwlock)); /* Zero out structure */
 /*	pthread_rwlockattr_t rwlock_attr;
 	pthread_rwlockattr_init(&rwlock_attr);
 	pthread_rwlockattr_setpshared(&rwlock_attr, PTHREAD_MUTEX_ERRORCHECK); */

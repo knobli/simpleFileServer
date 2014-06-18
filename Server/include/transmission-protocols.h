@@ -33,16 +33,6 @@
 
 typedef void (*consumer_function)(const char *buff, size_t count);
 
-
-/* transmit a string over a socket or pipe connnection
- * if len is given it is assumed to be the lenght of the string
- * if it is -1, the length is found out with strlen()
- * The length of string is transmitted first as 4 byte unsigned integer,
- * followed by the string itself.
- * @param client_socket  a socket or pipe.  Could be a file also.
- * @param str string to be transmitted
- * @param len length of string to be transmitted
- */
 void write_string(int client_socket, char *str);
 
 void write_eot(int client_socket);

@@ -142,7 +142,7 @@ char *create_file(const char *msg) {
 	if (add_memory_file(filename, length, content)) {
 		return ANSWER_SUCCESS_CREATE;
 	} else {
-		error(deep, "Could not create file");
+		debug(deep, "File '%s' already exist", filename);
 		return ANSWER_FAILED_CREATE;
 	}
 }
