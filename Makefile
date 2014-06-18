@@ -21,8 +21,8 @@ all: server test-client
 	cp -fv $(CLIENT_FILE) test
 
 clean:
-	rm -fv $(DEFAULT_DIR)run
-	rm -fv $(DEFAULT_DIR)test
+	rm -fv run
+	rm -fv test
 	rm -fv $(DEFAULT_DIR)lib/*.o
 	rm -fv $(DEFAULT_DIR)lib/*.a
 	rm -fv $(DEFAULT_DIR)src/*.o
@@ -69,7 +69,7 @@ test: clean libfileserver logger-test thread-link-test file-link-test server-tes
 logger-test: $(DEFAULT_DIR)tests/logger-test.c logger
 	gcc -c $(CFLAGS) $(DEFAULT_DIR)tests/logger-test.c -o $(DEFAULT_DIR)tests/logger-test.o
 	
-thread-link-test: tests/thread-linked-list-test.c thread-linked-list
+thread-link-test: $(DEFAULT_DIR)tests/thread-linked-list-test.c thread-linked-list
 	gcc -c $(CFLAGS) $(DEFAULT_DIR)tests/thread-linked-list-test.c -o $(DEFAULT_DIR)tests/thread-linked-list-test.o
 	
 file-link-test: $(DEFAULT_DIR)tests/file-linked-list-test.c file-linked-list
