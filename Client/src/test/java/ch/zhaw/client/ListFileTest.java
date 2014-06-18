@@ -25,9 +25,6 @@ public class ListFileTest extends Testbase {
 		getClient().createFile("test11", "blala");
 		getClient().createFile("test12", "blala");
 		FileListReturnValue rv = getClient().listFiles();
-		for(String fileName : rv.getFileNames()){
-			System.out.println(fileName);
-		}
 		assertTrue(12 <= rv.getFileCount());
 	}
 	

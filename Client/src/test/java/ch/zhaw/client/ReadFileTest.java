@@ -39,7 +39,7 @@ public class ReadFileTest extends Testbase {
 	private String getHeaderOfOutput(String fileName, String content) {
 		String expectedReturnValue = Protocol.ANSWER_SUCCESS_READ;
 		expectedReturnValue = expectedReturnValue.replaceAll(Protocol.PLACEHOLDER_FILENAME, fileName);
-		expectedReturnValue = expectedReturnValue.replaceAll(Protocol.PLACEHOLDER_LENGTH, ""+content.length());
+		expectedReturnValue = expectedReturnValue.replaceAll(Protocol.PLACEHOLDER_LENGTH, ""+(content.length() + 1));
 		return expectedReturnValue;
 	}	
 
