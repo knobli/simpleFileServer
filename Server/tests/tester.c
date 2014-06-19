@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 	file_list_test_suite();
 	message_creator_test_suite();
 	server_test_suite();
-	load_test_suite();
+	//load_test_suite();
 
 	CU_basic_run_tests();
 	CU_cleanup_registry();

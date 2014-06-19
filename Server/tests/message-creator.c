@@ -17,20 +17,46 @@
 #include <CUnit/Basic.h>
 
 char *create_content_message(const char *filename, const char *content) {
-	char *msg = "";
-	msg = append_strings(msg, filename);
+	char *msg = malloc(1);
+	msg[0] = '\000';
+	char *tmp_string;
+	int tmp_length;
+
+	tmp_length = append_strings(msg, filename, &tmp_string);
+	free(msg);
+	msg = malloc(tmp_length);
+	strncpy(msg, tmp_string, tmp_length);
+	free(tmp_string);
+
 	size_t length = strlen(content) + 1;
 	char len_string[15];
 	sprintf(len_string, " %zu\n", length);
-	msg = append_strings(msg, len_string);
-	msg = append_strings(msg, content);
-	msg = append_strings(msg, "\n");
+
+	tmp_length = append_strings(msg, len_string, &tmp_string);
+	free(msg);
+	msg = malloc(tmp_length);
+	strncpy(msg, tmp_string, tmp_length);
+	free(tmp_string);
+
+	tmp_length = append_strings(msg, content, &tmp_string);
+	free(msg);
+	msg = malloc(tmp_length);
+	strncpy(msg, tmp_string, tmp_length);
+	free(tmp_string);
+
+	tmp_length = append_strings(msg, "\n", &tmp_string);
+	free(msg);
+	msg = malloc(tmp_length);
+	strncpy(msg, tmp_string, tmp_length);
+	free(tmp_string);
 	return msg;
 }
 
 char *create_create_message(const char *filename, const char *content) {
 	char *msg = "CREATE ";
-	msg = append_strings(msg, create_content_message(filename, content));
+	char *content_msg = create_content_message(filename, content);
+	append_strings(msg, content_msg, &msg);
+	free(content_msg);
 	return msg;
 }
 
@@ -38,28 +64,33 @@ void test_create_create_message() {
 	char *filename = "file3";
 	char *content = "Test content";
 	char *msg = create_create_message(filename, content);
-	CU_ASSERT_STRING_EQUAL(msg, "CREATE file3 12\nTest content\n");
+	CU_ASSERT_STRING_EQUAL(msg, "CREATE file3 13\nTest content\n");
 	free(msg);
 }
 
 char *create_update_message(const char *filename, const char *content) {
 	char *msg = "UPDATE ";
-	msg = append_strings(msg, create_content_message(filename, content));
-	return msg;
+	char *content_msg = create_content_message(filename, content);
+	char *msg_final;
+	append_strings(msg, content_msg, &msg_final);
+	free(content_msg);
+	return msg_final;
 }
 
 void test_create_update_message() {
 	char *filename = "file3";
 	char *content = "Test content";
 	char *msg = create_update_message(filename, content);
-	CU_ASSERT_STRING_EQUAL(msg, "UPDATE file3 12\nTest content\n");
+	CU_ASSERT_STRING_EQUAL(msg, "UPDATE file3 13\nTest content\n");
 	free(msg);
 }
 
 char *create_read_message(const char *filename) {
 	char *msg = "READ ";
-	msg = append_strings(msg, filename);
-	msg = append_strings(msg, "\n");
+	char *msg_with_name;
+	append_strings(msg, filename, &msg_with_name);
+	append_strings(msg_with_name, "\n", &msg);
+	free(msg_with_name);
 	return msg;
 }
 
@@ -72,8 +103,10 @@ void test_create_read_message() {
 
 char *create_delete_message(const char *filename) {
 	char *msg = "DELETE ";
-	msg = append_strings(msg, filename);
-	msg = append_strings(msg, "\n");
+	char *msg_with_name;
+	append_strings(msg, filename, &msg_with_name);
+	append_strings(msg_with_name, "\n", &msg);
+	free(msg_with_name);
 	return msg;
 }
 
@@ -85,11 +118,10 @@ void test_create_delete_message() {
 }
 
 char *create_numbered_filename(const char *filename_base, size_t num) {
-	char *filename = "";
-	filename = append_strings(filename, filename_base);
 	char num_string[15];
 	sprintf(num_string, "%zu", num);
-	filename = append_strings(filename, num_string);
+	char *filename;
+	append_strings(filename_base, num_string, &filename);
 	return filename;
 }
 
@@ -113,7 +145,7 @@ void test_create_create_message_numbered() {
 	size_t num = 12;
 	char *content = "Test content";
 	char *msg = create_create_message_numbered(filename_base, num, content);
-	CU_ASSERT_STRING_EQUAL(msg, "CREATE file_test12 12\nTest content\n");
+	CU_ASSERT_STRING_EQUAL(msg, "CREATE file_test12 13\nTest content\n");
 	free(msg);
 }
 
@@ -129,7 +161,7 @@ void test_create_update_message_numbered() {
 	size_t num = 12;
 	char *content = "Test content";
 	char *msg = create_update_message_numbered(filename_base, num, content);
-	CU_ASSERT_STRING_EQUAL(msg, "UPDATE file_test12 12\nTest content\n");
+	CU_ASSERT_STRING_EQUAL(msg, "UPDATE file_test12 13\nTest content\n");
 	free(msg);
 }
 

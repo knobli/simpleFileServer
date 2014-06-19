@@ -28,5 +28,4 @@ char *create_read_message_numbered(const char *filename_base, size_t num);
 
 char *create_delete_message_numbered(const char *filename_base, size_t num);
 
-
 #endif /* MESSAGE_CREATOR_H_ */

@@ -73,6 +73,7 @@ bool init_thread_linked_list(bool start_cleanup) {
 
 	int returnCode;
 	debug(deep, "Init thread head link mod mutex");
+	memset(&head_thread_mutex, 0, sizeof(head_thread_mutex)); /* Zero out structure */
 	returnCode = pthread_mutex_init(&head_thread_mutex, NULL);
 	handle_thread_error(returnCode, "Could not init link mod mutex", THREAD_EXIT);
 
@@ -130,6 +131,7 @@ size_t cleanup_threads() {
 				debug(deep, "Set initial element as head of list");
 				head_thread = last;
 
+				ptr->prev = NULL;
 				free(ptr->thread);
 				free(ptr);
 
@@ -138,15 +140,17 @@ size_t cleanup_threads() {
 				handle_thread_error(returnCode, "Could not lock link mod mutex - cleanup", THREAD_EXIT);
 			} else {
 				error(deep, "Could not lock head thread link mod mutex, will come later!");
+				break;
 			}
 		} else {
 			last->prev = ptr->prev;
 
+			ptr->prev = NULL;
 			free(ptr->thread);
 			free(ptr);
 		}
 
-		ptr = ptr->prev;
+		ptr = last->prev;
 	}
 	info(deep, "Joined %zu thread(s)", threads_joined);
 	return threads_joined;

@@ -34,9 +34,13 @@ void *create_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	char *create_msg = create_create_message(arg->filename, arg->content);
 	char *response = create_file(create_msg);
+	free(create_msg);
 	if (strcmp(response, ANSWER_SUCCESS_CREATE) != 0) {
 		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_CREATE);
 	}
+	free(arg->filename);
+	free(arg->content);
+	free(arg);
 	return (void *) NULL;
 }
 
@@ -56,6 +60,7 @@ void test_create_files_concurrent() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		thread_data->content = malloc(content_lengt_concurrent);
 		strncpy(thread_data->content, file_content_concurrent, content_lengt_concurrent);
 		if (pthread_create(thread, NULL, (void*) create_file_run, (void*) thread_data) != 0) {
@@ -70,9 +75,13 @@ void *update_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	char *update_msg = create_update_message(arg->filename, arg->content);
 	char *response = update_file(update_msg);
+	free(update_msg);
 	if (strcmp(response, ANSWER_SUCCESS_UPDATE) != 0) {
 		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_UPDATE);
 	}
+	free(arg->filename);
+	free(arg->content);
+	free(arg);
 	return (void *) NULL;
 }
 
@@ -89,6 +98,7 @@ void test_update_files_concurrent() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		thread_data->content = malloc(content_lengt_concurrent);
 		strncpy(thread_data->content, file_content_concurrent, content_lengt_concurrent);
 		if (pthread_create(thread, NULL, (void*) update_file_run, (void*) thread_data) != 0) {
@@ -103,9 +113,13 @@ void *read_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	char *read_msg = create_read_message(arg->filename);
 	char *response = read_file(read_msg);
+	free(read_msg);
 	if (strncmp(response, ANSWER_SUCCESS_READ, 12) != 0) {
 		printf("expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_READ);
 	}
+	free(response);
+	free(arg->filename);
+	free(arg);
 	return (void *) NULL;
 }
 
@@ -122,6 +136,7 @@ void test_read_files_concurrent() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		if (pthread_create(thread, NULL, (void*) read_file_run, (void*) thread_data) != 0) {
 			printf("Could not start thread %zu\n", i);
 		} else {
@@ -135,6 +150,7 @@ void *list_file_run(void *ptr) {
 	if (strncmp(response, ANSWER_SUCCESS_LIST, 4) != 0) {
 		printf("expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_LIST);
 	}
+	free(response);
 	return (void *) NULL;
 }
 
@@ -156,9 +172,12 @@ void *delete_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	char *delete_msg = create_delete_message(arg->filename);
 	char *response = delete_file(delete_msg);
+	free(delete_msg);
 	if (strcmp(response, ANSWER_SUCCESS_DELETE) != 0) {
 		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_DELETE);
 	}
+	free(arg->filename);
+	free(arg);
 	return (void *) NULL;
 }
 
@@ -175,6 +194,7 @@ void test_delete_files_concurrent() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		if (pthread_create(thread, NULL, (void*) delete_file_run, (void*) thread_data) != 0) {
 			printf("Could not start thread %zu\n", i);
 		} else {
@@ -186,7 +206,7 @@ void test_delete_files_concurrent() {
 int main(int argc, char *argv[]) {
 	install_segfault_handler();
 
-	set_log_lvl(INFO);
+	set_log_lvl(FINEST);
 	init_thread_linked_list(true);
 
 	test_create_files_concurrent();

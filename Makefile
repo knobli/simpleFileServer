@@ -1,5 +1,5 @@
 DEFAULT_DIR=Server/
-CFLAGS=-march=native -Wall -std=gnu99 -O2 -I./$(DEFAULT_DIR)include -L./$(DEFAULT_DIR)lib
+CFLAGS=-march=native -Wall -std=gnu99 -g -O0 -I./$(DEFAULT_DIR)include -L./$(DEFAULT_DIR)lib
 TEST_FLAGS=-g -rdynamic
 LIBS=-lpthread -lfileserver
 TEST_LIBS=-lcunit

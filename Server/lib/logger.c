@@ -20,36 +20,49 @@
 
 static size_t LOG_LEVEL = INFO;
 
-char * append_strings(const char * old, const char * new) {
-	// find the size of the string to allocate
-	const size_t old_len = strlen(old), new_len = strlen(new);
+int append_strings(const char *old, const char *new, char **out) {
+	const size_t old_len = strlen(old);
+	const size_t new_len = strlen(new);
 	const size_t out_len = old_len + new_len + 1;
 
-	// allocate a pointer to the new string
-	char *out = malloc(out_len);
+	*out = malloc(out_len);
 
-	// concat both strings and return
-	memcpy(out, old, old_len);
-	memcpy(out + old_len, new, new_len + 1);
-	return out;
+	memcpy(*out, old, old_len);
+	memcpy(*out + old_len, new, new_len + 1);
+	return out_len;
 }
 
 char *mk_readable(char* string) {
 	char *delimiter = "\n";
 	char *saveptr;
 	char *part = strtok_r(string, delimiter, &saveptr);
-	char *rv = "";
+	char *rv = malloc(1);
+	rv[0] = '\000';
+	char *tmp_string;
+	size_t tmp_length;
 	int i = 0;
 	while (part != NULL) {
 		if (i > 0) {
-			rv = append_strings(rv, "\\n");
+			tmp_length = append_strings(rv, "\\n", &tmp_string);
+			free(rv);
+			rv = malloc(tmp_length);
+			strncpy(rv, tmp_string, tmp_length);
+			free(tmp_string);
 		}
-		rv = append_strings(rv, part);
+		tmp_length = append_strings(rv, part, &tmp_string);
+		free(rv);
+		rv = malloc(tmp_length);
+		strncpy(rv, tmp_string, tmp_length);
+		free(tmp_string);
 		part = strtok_r(NULL, delimiter, &saveptr);
 		i++;
 	}
 	if (i > 1) {
-		rv = append_strings(rv, "\\n");
+		tmp_length = append_strings(rv, "\\n", &tmp_string);
+		free(rv);
+		rv = malloc(tmp_length);
+		strncpy(rv, tmp_string, tmp_length);
+		free(tmp_string);
 	}
 	return rv;
 }
@@ -62,8 +75,14 @@ void log_msg(const char* tag, int deep, char* message) {
 	char *timestamp = strtok_r(ctime(&now), "\n", &saveptr);
 	message = mk_readable(message);
 	int i;
+	char *tmp_string;
+	int tmp_length;
 	for (i = 0; i < deep; i++) {
-		message = append_strings("  ", message);
+		tmp_length = append_strings("  ", message, &tmp_string);
+		free(message);
+		message = malloc(tmp_length);
+		strncpy(message, tmp_string, tmp_length);
+		free(tmp_string);
 	}
 	printf("%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
 	free(message);
@@ -77,8 +96,14 @@ void log_err(const char* tag, int deep, char* message) {
 	char *timestamp = strtok_r(ctime(&now), "\n", &saveptr);
 	message = mk_readable(message);
 	int i;
+	char *tmp_string;
+	int tmp_length;
 	for (i = 0; i < deep; i++) {
-		message = append_strings("  ", message);
+		tmp_length = append_strings("  ", message, &tmp_string);
+		free(message);
+		message = malloc(tmp_length);
+		strncpy(message, tmp_string, tmp_length);
+		free(tmp_string);
 	}
 	fprintf(stderr, "%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
 	free(message);

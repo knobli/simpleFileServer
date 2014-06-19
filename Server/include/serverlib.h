@@ -16,9 +16,13 @@
 
 typedef char *char_ptr;
 
-enum exit_type { PROCESS_EXIT, THREAD_EXIT, NO_EXIT };
+enum exit_type {
+	PROCESS_EXIT, THREAD_EXIT, NO_EXIT
+};
 
-enum file_type { NOT_EXISTENT, DIRECTORY, REGULAR_FILE, OTHER };
+enum file_type {
+	NOT_EXISTENT, DIRECTORY, REGULAR_FILE, OTHER
+};
 
 void exit_by_type(enum exit_type et);
 

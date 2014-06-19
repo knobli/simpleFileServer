@@ -48,8 +48,8 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 	pthread_mutex_t mutex;
 	memset(&mutex, 0, sizeof(mutex)); /* Zero out structure */
 	/* pthread_mutexattr_t psharedm;
-	pthread_mutexattr_init(&psharedm);
-	pthread_mutexattr_setpshared(&psharedm, PTHREAD_MUTEX_ERRORCHECK); */
+	 pthread_mutexattr_init(&psharedm);
+	 pthread_mutexattr_setpshared(&psharedm, PTHREAD_MUTEX_ERRORCHECK); */
 	returnCode = pthread_mutex_init(&mutex, NULL);
 	handle_thread_error(returnCode, "Could not init link mod mutex", THREAD_EXIT);
 	file->link_mod_mutex = mutex;
@@ -57,9 +57,9 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 	debug(deep, "Init rwlock mutex");
 	pthread_rwlock_t rwlock;
 	memset(&rwlock, 0, sizeof(rwlock)); /* Zero out structure */
-/*	pthread_rwlockattr_t rwlock_attr;
-	pthread_rwlockattr_init(&rwlock_attr);
-	pthread_rwlockattr_setpshared(&rwlock_attr, PTHREAD_MUTEX_ERRORCHECK); */
+	/*	pthread_rwlockattr_t rwlock_attr;
+	 pthread_rwlockattr_init(&rwlock_attr);
+	 pthread_rwlockattr_setpshared(&rwlock_attr, PTHREAD_MUTEX_ERRORCHECK); */
 	returnCode = pthread_rwlock_init(&rwlock, NULL);
 	handle_thread_error(returnCode, "Could not init rwlock mutex", THREAD_EXIT);
 	file->rwlock = rwlock;
@@ -255,21 +255,21 @@ bool delete_memory_file(const char* filename) {
 		/*
 		 * TODO: destroy mutex
 
-		finest(deep, "Lock link mod mutex on %p - delete case", del);
-		returnCode = pthread_mutex_lock(&del->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not lock link mod mutex - delete", THREAD_EXIT);
+		 finest(deep, "Lock link mod mutex on %p - delete case", del);
+		 returnCode = pthread_mutex_lock(&del->link_mod_mutex);
+		 handle_thread_error(returnCode, "Could not lock link mod mutex - delete", THREAD_EXIT);
 
-		finest(deep, "Unlock link mod mutex on %p - delete case", del);
-		returnCode = pthread_mutex_unlock(&del->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not unlock link mod mutex - delete", THREAD_EXIT);
+		 finest(deep, "Unlock link mod mutex on %p - delete case", del);
+		 returnCode = pthread_mutex_unlock(&del->link_mod_mutex);
+		 handle_thread_error(returnCode, "Could not unlock link mod mutex - delete", THREAD_EXIT);
 
-		returnCode = pthread_mutex_destroy(&del->link_mod_mutex);
-		handle_thread_error(returnCode, "Could not destroy link mod mutex - delete", THREAD_EXIT);
+		 returnCode = pthread_mutex_destroy(&del->link_mod_mutex);
+		 handle_thread_error(returnCode, "Could not destroy link mod mutex - delete", THREAD_EXIT);
 
-		returnCode = pthread_rwlock_destroy(&del->rwlock);
-		handle_thread_error(returnCode, "Could not destroy rw mutex - delete", THREAD_EXIT);
+		 returnCode = pthread_rwlock_destroy(&del->rwlock);
+		 handle_thread_error(returnCode, "Could not destroy rw mutex - delete", THREAD_EXIT);
 
-				 */
+		 */
 
 		debug(deep, "Free filename");
 		free(del->filename);
@@ -289,7 +289,10 @@ int list_memory_file(char **file_list) {
 	struct memory_file *last = NULL;
 	int returnCode;
 	int file_counter = 0;
-	char *tmp_file_list = "";
+	char *tmp_file_list = malloc(1);
+	tmp_file_list[0] = '\000';
+	char *tmp_string;
+	size_t tmp_length;
 	info(deep, "Go trough files");
 	while (ptr != NULL) {
 		if (last != NULL) {
@@ -305,10 +308,26 @@ int list_memory_file(char **file_list) {
 			char *filename = ptr->filename;
 			debug(deep, "Found file '%s'", filename);
 			if (file_counter == 0) {
-				tmp_file_list = append_strings(tmp_file_list, filename);
+				tmp_length = append_strings(tmp_file_list, filename, &tmp_string);
+
+				free(tmp_file_list);
+				tmp_file_list = malloc(tmp_length);
+				strncpy(tmp_file_list, tmp_string, tmp_length);
+				free(tmp_string);
 			} else {
-				tmp_file_list = append_strings(tmp_file_list, "\n");
-				tmp_file_list = append_strings(tmp_file_list, filename);
+				tmp_length = append_strings(tmp_file_list, "\n", &tmp_string);
+
+				free(tmp_file_list);
+				tmp_file_list = malloc(tmp_length);
+				strncpy(tmp_file_list, tmp_string, tmp_length);
+				free(tmp_string);
+
+				tmp_length = append_strings(tmp_file_list, filename, &tmp_string);
+
+				free(tmp_file_list);
+				tmp_file_list = malloc(tmp_length);
+				strncpy(tmp_file_list, tmp_string, tmp_length);
+				free(tmp_string);
 			}
 			file_counter++;
 		}

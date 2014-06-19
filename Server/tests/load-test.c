@@ -45,13 +45,17 @@ void test_read_files() {
 	size_t i;
 	for (i = 0; i < max_files; i++) {
 		char *read_msg = create_read_message_numbered(filename_base, i);
-		CU_ASSERT_NSTRING_EQUAL(read_file(read_msg), "FILECONTENT ", 12);
+		char *content = read_file(read_msg);
 		free(read_msg);
+		CU_ASSERT_NSTRING_EQUAL(content, "FILECONTENT ", 12);
+		free(content);
 	}
 }
 
 void test_list_files_load() {
-	CU_ASSERT_NSTRING_EQUAL(list_files(list_msg), "ACK ", 4);
+	char *response = list_files(list_msg);
+	CU_ASSERT_NSTRING_EQUAL(response, "ACK ", 4);
+	free(response);
 }
 
 void test_delete_files() {

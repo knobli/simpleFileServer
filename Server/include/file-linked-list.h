@@ -23,5 +23,4 @@ bool delete_memory_file(const char *filename);
 
 int list_memory_file(char **file_list);
 
-
 #endif /* FILE_LINKED_LIST_H_ */

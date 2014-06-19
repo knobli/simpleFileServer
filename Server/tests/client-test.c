@@ -67,7 +67,10 @@ char *send_message(const char *msg) {
 	}
 
 	/* Receive the same string containing the square back from the server */
-	char *response = "";
+	char *response = malloc(1);
+	response[0] = '\000';
+	char *tmp_response;
+	int tmp_length;
 	while (true) {
 		debug(deep, "Read line\n");
 		char *buffer_ptr;
@@ -79,7 +82,11 @@ char *send_message(const char *msg) {
 			debug(deep, "terminated by server\n");
 			break;
 		}
-		response = append_strings(response, buffer_ptr);
+		tmp_length = append_strings(response, buffer_ptr, &tmp_response);
+		free(response);
+		response = malloc(tmp_length);
+		strncpy(response, tmp_response, tmp_length);
+		free(tmp_response);
 	}
 
 	close(sock);
@@ -92,6 +99,7 @@ void *create_file_run(void *ptr) {
 	info(deep, "Create file: %s", arg->filename);
 	char *create_msg = create_create_message(arg->filename, arg->content);
 	char *response = send_message(create_msg);
+	free(create_msg);
 	if (strcmp(response, ANSWER_SUCCESS_CREATE) != 0) {
 		printf("CREATE: expected: '%s' actual: '%s'\n", ANSWER_SUCCESS_CREATE, response);
 	}
@@ -115,6 +123,7 @@ void create_files_by_client() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		thread_data->content = malloc(content_lengt_client);
 		strncpy(thread_data->content, file_content_client, content_lengt_client);
 		if (pthread_create(thread, NULL, (void*) create_file_run, (void*) thread_data) != 0) {
@@ -131,6 +140,7 @@ void *update_file_run(void *ptr) {
 	info(deep, "Update file: %s", arg->filename);
 	char *update_msg = create_update_message(arg->filename, arg->content);
 	char *response = send_message(update_msg);
+	free(update_msg);
 	if (strcmp(response, ANSWER_SUCCESS_UPDATE) != 0 && strcmp(response, ANSWER_FAILED_UPDATE) != 0) {
 		printf("UPDATE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_UPDATE, ANSWER_FAILED_UPDATE, response);
 	}
@@ -151,6 +161,7 @@ void update_files_by_client() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		thread_data->content = malloc(content_lengt_client);
 		strncpy(thread_data->content, file_content_client, content_lengt_client);
 		if (pthread_create(thread, NULL, (void*) update_file_run, (void*) thread_data) != 0) {
@@ -167,6 +178,7 @@ void *read_file_run(void *ptr) {
 	info(deep, "Read file: %s", arg->filename);
 	char *read_msg = create_read_message(arg->filename);
 	char *response = send_message(read_msg);
+	free(read_msg);
 	if (strncmp(response, ANSWER_SUCCESS_READ, 12) != 0 && strcmp(response, ANSWER_FAILED_READ) != 0) {
 		printf("READ: expected: '%s...' or '%s' actual: '%s'\n", ANSWER_SUCCESS_READ, ANSWER_FAILED_READ, response);
 	}
@@ -186,6 +198,7 @@ void read_files_by_client() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		if (pthread_create(thread, NULL, (void*) read_file_run, (void*) thread_data) != 0) {
 			printf("Could not start thread %zu\n", i);
 		} else {
@@ -224,6 +237,7 @@ void *delete_file_run(void *ptr) {
 	info(deep, "Delete file: %s", arg->filename);
 	char *delete_msg = create_delete_message(arg->filename);
 	char *response = send_message(delete_msg);
+	free(delete_msg);
 	if (strcmp(response, ANSWER_SUCCESS_DELETE) != 0 && strcmp(response, ANSWER_FAILED_DELETE) != 0) {
 		printf("DELETE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_DELETE, ANSWER_FAILED_DELETE, response);
 	}
@@ -243,6 +257,7 @@ void delete_files_by_client() {
 
 		thread_data->filename = malloc(filename_lenght);
 		strncpy(thread_data->filename, filename, filename_lenght);
+		free(filename);
 		if (pthread_create(thread, NULL, (void*) delete_file_run, (void*) thread_data) != 0) {
 			printf("Could not start thread %zu\n", i);
 		} else {

@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-char *append_strings(const char * old, const char * new);
+int append_strings(const char *old, const char *new, char **out);
 
 bool finest(int deep, const char* message, ...);
 bool debug(int deep, const char* message, ...);

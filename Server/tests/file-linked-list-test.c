@@ -28,11 +28,11 @@ const char *content_special_chars = "_ das / *\" content '^";
 
 void test_add_memory_file() {
 	CU_ASSERT_TRUE(init_linked_list());
-	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content), test_file1_content));
+	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content) + 1, test_file1_content));
 }
 
 void test_update_memory_file() {
-	CU_ASSERT_TRUE(update_memory_file(test_filename1, strlen(test_file1_content_up), test_file1_content_up));
+	CU_ASSERT_TRUE(update_memory_file(test_filename1, strlen(test_file1_content_up) + 1, test_file1_content_up));
 }
 
 void test_read_memory_file() {
@@ -49,11 +49,11 @@ void test_delete_memory_file() {
 
 void test_failure_cases_list() {
 	//add file twice
-	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content), test_file1_content));
-	CU_ASSERT_FALSE(add_memory_file(test_filename1, strlen(test_file1_content_up), test_file1_content_up));
+	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content) + 1, test_file1_content));
+	CU_ASSERT_FALSE(add_memory_file(test_filename1, strlen(test_file1_content_up) + 1, test_file1_content_up));
 	CU_ASSERT_TRUE(delete_memory_file(test_filename1));
 
-	CU_ASSERT_FALSE(update_memory_file(test_filename2, strlen(test_file2_content_up), test_file2_content_up));
+	CU_ASSERT_FALSE(update_memory_file(test_filename2, strlen(test_file2_content_up) + 1, test_file2_content_up));
 
 	char *content;
 	CU_ASSERT_FALSE(read_memory_file(test_filename2, &content));
@@ -64,8 +64,8 @@ void test_failure_cases_list() {
 }
 
 void test_list_memory_files() {
-	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content), test_file1_content));
-	CU_ASSERT_TRUE(add_memory_file(test_filename2, strlen(test_file2_content), test_file2_content));
+	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content) + 1, test_file1_content));
+	CU_ASSERT_TRUE(add_memory_file(test_filename2, strlen(test_file2_content) + 1, test_file2_content));
 
 	char *file_list;
 	CU_ASSERT_EQUAL(list_memory_file(&file_list), 2);
@@ -77,8 +77,8 @@ void test_list_memory_files() {
 }
 
 void test_special_chars_list() {
-	CU_ASSERT_TRUE(add_memory_file(filename_special_chars, strlen(content_special_chars), content_special_chars));
-	CU_ASSERT_TRUE(update_memory_file(filename_special_chars, strlen(content_special_chars), content_special_chars));
+	CU_ASSERT_TRUE(add_memory_file(filename_special_chars, strlen(content_special_chars) + 1, content_special_chars));
+	CU_ASSERT_TRUE(update_memory_file(filename_special_chars, strlen(content_special_chars) + 1, content_special_chars));
 
 	char *content;
 	CU_ASSERT_TRUE(read_memory_file(filename_special_chars, &content));

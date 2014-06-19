@@ -44,8 +44,7 @@ void exit_by_type(enum exit_type et) {
 }
 
 /* helper function for dealing with errors */
-void handle_error_myerrno(long return_code, int myerrno, const char *msg,
-		enum exit_type et) {
+void handle_error_myerrno(long return_code, int myerrno, const char *msg, enum exit_type et) {
 	if (return_code < 0) {
 		char extra_msg[ERROR_SIZE];
 		char error_msg[ERROR_SIZE];
@@ -55,8 +54,7 @@ void handle_error_myerrno(long return_code, int myerrno, const char *msg,
 		} else {
 			extra_msg[0] = '\000';
 		}
-		sprintf(error_msg, "return_code=%ld | message=%s | error=%s",
-				return_code, error_str, extra_msg);
+		sprintf(error_msg, "return_code=%ld | message=%s | error=%s", return_code, error_str, extra_msg);
 		error(0, error_msg);
 		exit_by_type(et);
 	}

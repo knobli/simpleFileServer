@@ -160,6 +160,7 @@ void *thread_run(void *ptr) {
 	char *result = select_strategy(buffer_ptr);
 
 	write_string(client_socket, result);
+	free(result);
 
 	write_eot(client_socket);
 	info(deep, "Connection will be closed");

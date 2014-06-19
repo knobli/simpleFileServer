@@ -43,8 +43,8 @@ void write_string(int client_socket, char *str) {
 	int send_len = write(client_socket, str, len);
 	handle_error(send_len, "could not write", THREAD_EXIT);
 
-	if(send_len != len){
-		error(deep,"Write to client socket failed");
+	if (send_len != len) {
+		error(deep, "Write to client socket failed");
 		exit_by_type(THREAD_EXIT);
 	}
 }
@@ -59,14 +59,13 @@ size_t read_and_store_string(int client_socket, char **result) {
 	char buffer[MAX_MESSAGE_LEN + 1];
 	size_t bytes_received = 0;
 
-	debug(deep,"Read from client socket");
+	debug(deep, "Read from client socket");
 	bytes_received = read(client_socket, buffer, MAX_MESSAGE_LEN);
-	handle_error(bytes_received,
-			"recv() failed or connection closed prematurely", THREAD_EXIT);
-	debug(deep,"Received bytes: %zu", bytes_received);
+	handle_error(bytes_received, "recv() failed or connection closed prematurely", THREAD_EXIT);
+	debug(deep, "Received bytes: %zu", bytes_received);
 
 	if (bytes_received == 0) {
-		debug(deep,"Return empty buffer");
+		debug(deep, "Return empty buffer");
 		*result = (char *) EMPTY_BUFFER; /* actually the same as empty string */
 		return bytes_received;
 	}
@@ -78,23 +77,23 @@ size_t read_and_store_string(int client_socket, char **result) {
 	return bytes_received;
 }
 
-char *select_strategy(const char *msg){
+char *select_strategy(const char *msg) {
 	int deep = 1;
 	debug(deep, "Received string: '%s'", msg);
 	info(deep, "Select strategy");
 	unsigned char action = msg[0];
 
 	char *result;
-
+	char *tmp_result;
 	switch (action) {
 	case COMMAND_CREATE:
-		result = create_file(msg);
+		append_strings("", create_file(msg), &result);
 		break;
 	case COMMAND_UPDATE:
-		result = update_file(msg);
+		append_strings("", update_file(msg), &result);
 		break;
 	case COMMAND_DELETE:
-		result = delete_file(msg);
+		append_strings("", delete_file(msg), &result);
 		break;
 	case COMMAND_READ:
 		result = read_file(msg);
@@ -103,7 +102,7 @@ char *select_strategy(const char *msg){
 		result = list_files(msg);
 		break;
 	default:
-		result = ANSWER_UNKOWN;
+		append_strings("", ANSWER_UNKOWN, &result);
 		error(deep, "Wrong action %c", action);
 	}
 
@@ -118,8 +117,7 @@ char *create_file(const char *msg) {
 	char org_length_str[5];
 	char content[4096];
 
-	const char * create_regex_text =
-			"CREATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	const char * create_regex_text = "CREATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
 	compile_regex(&r, create_regex_text);
 	int retCode = match_regex(&r, msg, filename, org_length_str, content);
 	regfree(&r);
@@ -154,8 +152,7 @@ char *update_file(const char *msg) {
 	char org_length_str[5];
 	char content[4096];
 
-	const char *update_regex_text =
-			"UPDATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
+	const char *update_regex_text = "UPDATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
 	compile_regex(&r, update_regex_text);
 	int retCode = match_regex(&r, msg, filename, org_length_str, content);
 	regfree(&r);
@@ -205,6 +202,7 @@ char *read_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
 	char filename[4096];
+	char *returnValue;
 
 	const char *read_regex_text = "READ[[:blank:]]+([[:graph:]|[:blank:]]+)[[:cntrl:]]+";
 	compile_regex(&r, read_regex_text);
@@ -212,36 +210,38 @@ char *read_file(const char *msg) {
 	regfree(&r);
 	if (!retCode) {
 		error(deep, "Message '%s' does not match to regex!", msg);
-		return ANSWER_UNKOWN;
+		append_strings("", ANSWER_UNKOWN, &returnValue);
+		return returnValue;
 	}
 
-	char *returnValue;
 	char *content;
 	if (read_memory_file(filename, &content)) {
-		if (content != NULL) {
-			debug(deep, "Content of file: %s", content);
-			int length = strlen(content) + 1;
-			char len_string[15];
-			sprintf(len_string, " %d\n", length);
-			char *rv = append_strings(ANSWER_SUCCESS_READ, filename);
-			rv = append_strings(rv, len_string);
-			rv = append_strings(rv, content);
-			rv = append_strings(rv, "\n");
-			returnValue = rv;
-		} else {
-			error(deep, "Could not read file");
-			returnValue = ANSWER_INTERNAL_ERROR;
-		}
+		debug(deep, "Content of file: %s", content);
+		int length = strlen(content) + 1;
+		char len_string[15];
+		sprintf(len_string, " %d\n", length);
+		char *rv_with_name;
+		append_strings(ANSWER_SUCCESS_READ, filename, &rv_with_name);
+		char *rv_with_len;
+		append_strings(rv_with_name, len_string, &rv_with_len);
+		free(rv_with_name);
+		char *rv_with_content;
+		append_strings(rv_with_len, content, &rv_with_content);
+		free(rv_with_len);
+		append_strings(rv_with_content, "\n", &returnValue);
+		free(rv_with_content);
+		free(content);
 	} else {
-		returnValue = ANSWER_FAILED_READ;
+		append_strings("", ANSWER_FAILED_READ, &returnValue);
 	}
-	free(content);
+
 	return returnValue;
 }
 
 char *list_files(const char *msg) {
 	const int deep = 2;
 	regex_t r;
+	char *rv;
 
 	const char *list_regex_text = "LIST[[:cntrl:]]+";
 	compile_regex(&r, list_regex_text);
@@ -249,7 +249,8 @@ char *list_files(const char *msg) {
 	regfree(&r);
 	if (!retCode) {
 		error(deep, "Message '%s' does not match to regex!", msg);
-		return ANSWER_UNKOWN;
+		append_strings("", ANSWER_UNKOWN, &rv);
+		return rv;
 	}
 
 	info(deep, "List files");
@@ -259,11 +260,19 @@ char *list_files(const char *msg) {
 	//debug(deep, "Output from list method: %s", file_list);
 	char str[15];
 	sprintf(str, "%d", file_counter);
-	char *rv = append_strings(ANSWER_SUCCESS_LIST, str);
-	rv = append_strings(rv, "\n");
-	if(file_counter > 0){
-		rv = append_strings(rv, file_list);
-		rv = append_strings(rv, "\n");
+	char *rv_wit_num;
+	append_strings(ANSWER_SUCCESS_LIST, str, &rv_wit_num);
+	char *rv_first_line;
+	append_strings(rv_wit_num, "\n", &rv_first_line);
+	free(rv_wit_num);
+	if (file_counter > 0) {
+		char *rv_with_list;
+		append_strings(rv_first_line, file_list, &rv_with_list);
+		free(rv_first_line);
+		append_strings(rv_with_list, "\n", &rv);
+		free(rv_with_list);
+	} else {
+		rv = rv_first_line;
 	}
 
 	free(file_list);

@@ -19,5 +19,4 @@ size_t cleanup_threads();
 
 void stop_cleanup_threads();
 
-
 #endif /* THREAD_LINKED_LIST_H_ */
