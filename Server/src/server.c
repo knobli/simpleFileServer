@@ -158,6 +158,7 @@ void *thread_run(void *ptr) {
 	handle_error(msg_length, "receive failed", THREAD_EXIT);
 
 	char *result = select_strategy(buffer_ptr);
+	free(buffer_ptr);
 
 	write_string(client_socket, result);
 	free(result);

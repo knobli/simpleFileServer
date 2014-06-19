@@ -83,6 +83,7 @@ char *send_message(const char *msg) {
 			break;
 		}
 		tmp_length = append_strings(response, buffer_ptr, &tmp_response);
+		free(buffer_ptr);
 		free(response);
 		response = malloc(tmp_length);
 		strncpy(response, tmp_response, tmp_length);
