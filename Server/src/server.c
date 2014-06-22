@@ -14,9 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <signal.h>
 
-#include "../lib/util.c"
 #include <serverlib.h>
 #include <file-linked-list.h>
 #include <thread-linked-list.h>
@@ -46,7 +46,8 @@ void usage(char *argv0, char *msg) {
 
 void cleanup() {
 	const int deep = 0;
-	stop_cleanup_threads();
+	destroy_thread_linked_list();
+	destroy_linked_list();
 	debug(deep, "Close server socket");
 	close(server_socket);
 }
@@ -62,7 +63,6 @@ void sigHandler(int signum) {
 }
 
 int main(int argc, char **argv) {
-	install_segfault_handler();
 	const int deep = 0;
 	signal(SIGINT, sigHandler);
 	signal(SIGUSR1, sigHandler);
@@ -151,6 +151,7 @@ void *thread_run(void *ptr) {
 	int client_socket = arg->client_socket;
 	debug(deep, "Client socket: %d", client_socket);
 	debug(deep, "Thread index: %d", arg->thread_idx);
+	free(arg);
 
 	char *buffer_ptr;
 	info(deep, "Receive message from client");

@@ -84,7 +84,6 @@ char *select_strategy(const char *msg) {
 	unsigned char action = msg[0];
 
 	char *result;
-	char *tmp_result;
 	switch (action) {
 	case COMMAND_CREATE:
 		append_strings("", create_file(msg), &result);

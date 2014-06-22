@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "../lib/util.c"
 #include <file-linked-list.h>
 #include <thread-linked-list.h>
 #include <transmission-protocols.h>
@@ -36,7 +35,7 @@ void *create_file_run(void *ptr) {
 	char *response = create_file(create_msg);
 	free(create_msg);
 	if (strcmp(response, ANSWER_SUCCESS_CREATE) != 0) {
-		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_CREATE);
+		fprintf(stderr, "expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_CREATE);
 	}
 	free(arg->filename);
 	free(arg->content);
@@ -46,7 +45,7 @@ void *create_file_run(void *ptr) {
 
 void test_create_files_concurrent() {
 	if (!init_linked_list()) {
-		printf("could not init linked list\n");
+		fprintf(stderr, "could not init linked list\n");
 	}
 	pthread_t *thread;
 	size_t i;
@@ -64,7 +63,7 @@ void test_create_files_concurrent() {
 		thread_data->content = malloc(content_lengt_concurrent);
 		strncpy(thread_data->content, file_content_concurrent, content_lengt_concurrent);
 		if (pthread_create(thread, NULL, (void*) create_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			fprintf(stderr, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -77,7 +76,7 @@ void *update_file_run(void *ptr) {
 	char *response = update_file(update_msg);
 	free(update_msg);
 	if (strcmp(response, ANSWER_SUCCESS_UPDATE) != 0) {
-		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_UPDATE);
+		fprintf(stderr, "expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_UPDATE);
 	}
 	free(arg->filename);
 	free(arg->content);
@@ -102,7 +101,7 @@ void test_update_files_concurrent() {
 		thread_data->content = malloc(content_lengt_concurrent);
 		strncpy(thread_data->content, file_content_concurrent, content_lengt_concurrent);
 		if (pthread_create(thread, NULL, (void*) update_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			fprintf(stderr, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -115,7 +114,7 @@ void *read_file_run(void *ptr) {
 	char *response = read_file(read_msg);
 	free(read_msg);
 	if (strncmp(response, ANSWER_SUCCESS_READ, 12) != 0) {
-		printf("expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_READ);
+		fprintf(stderr, "expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_READ);
 	}
 	free(response);
 	free(arg->filename);
@@ -138,7 +137,7 @@ void test_read_files_concurrent() {
 		strncpy(thread_data->filename, filename, filename_lenght);
 		free(filename);
 		if (pthread_create(thread, NULL, (void*) read_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			fprintf(stderr, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -148,7 +147,7 @@ void test_read_files_concurrent() {
 void *list_file_run(void *ptr) {
 	char *response = list_files(list_msg);
 	if (strncmp(response, ANSWER_SUCCESS_LIST, 4) != 0) {
-		printf("expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_LIST);
+		fprintf(stderr, "expected: '%s' actual: '%s...'\n", response, ANSWER_SUCCESS_LIST);
 	}
 	free(response);
 	return (void *) NULL;
@@ -161,7 +160,7 @@ void test_list_files_concurrent() {
 	for (i = 0; i < max_files_concurrent; i++) {
 		thread = (pthread_t *) malloc(sizeof(pthread_t));
 		if (pthread_create(thread, NULL, (void*) list_file_run, NULL) != 0) {
-			printf("Could not start thread %zu\n", i);
+			fprintf(stderr, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -174,7 +173,7 @@ void *delete_file_run(void *ptr) {
 	char *response = delete_file(delete_msg);
 	free(delete_msg);
 	if (strcmp(response, ANSWER_SUCCESS_DELETE) != 0) {
-		printf("expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_DELETE);
+		fprintf(stderr, "expected: '%s' actual: '%s'\n", response, ANSWER_SUCCESS_DELETE);
 	}
 	free(arg->filename);
 	free(arg);
@@ -196,7 +195,7 @@ void test_delete_files_concurrent() {
 		strncpy(thread_data->filename, filename, filename_lenght);
 		free(filename);
 		if (pthread_create(thread, NULL, (void*) delete_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			fprintf(stderr, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -204,9 +203,8 @@ void test_delete_files_concurrent() {
 }
 
 int main(int argc, char *argv[]) {
-	install_segfault_handler();
 
-	set_log_lvl(FINEST);
+	set_log_lvl(INFO);
 	init_thread_linked_list(true);
 
 	test_create_files_concurrent();

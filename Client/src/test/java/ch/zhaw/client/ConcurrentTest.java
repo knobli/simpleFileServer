@@ -76,6 +76,18 @@ public class ConcurrentTest {
 		tester.start();
 		return tester;
 	}	
+
+	@Test
+	public void smallConcurrentTest() throws IOException, InterruptedException {
+		List<ConcurrentTester> threads = new ArrayList<ConcurrentTester>();
+		for (int i = 0; i < 2; i++) {
+			threads.add(createThread());
+		}
+		for(ConcurrentTester tester : threads){
+			tester.join();
+			assertTrue(tester.isSuccessfull());
+		}
+	}	
 	
 	@Test
 	public void concurrentTest() throws IOException, InterruptedException {

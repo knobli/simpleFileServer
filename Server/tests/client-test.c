@@ -14,9 +14,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "../lib/util.c"
 #include <serverlib.h>
-#include <file-linked-list.h>
 #include <thread-linked-list.h>
 #include <transmission-protocols.h>
 #include <logger.h>
@@ -99,19 +97,20 @@ void *create_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	info(deep, "Create file: %s", arg->filename);
 	char *create_msg = create_create_message(arg->filename, arg->content);
+	free(arg->filename);
+	free(arg->content);
+	free(arg);
 	char *response = send_message(create_msg);
 	free(create_msg);
 	if (strcmp(response, ANSWER_SUCCESS_CREATE) != 0) {
-		printf("CREATE: expected: '%s' actual: '%s'\n", ANSWER_SUCCESS_CREATE, response);
+		error(deep, "CREATE: expected: '%s' actual: '%s'\n", ANSWER_SUCCESS_CREATE, response);
 	}
 	free(response);
 	return (void *) NULL;
 }
 
 void create_files_by_client() {
-	if (!init_linked_list()) {
-		printf("could not init linked list\n");
-	}
+	int deep = 1;
 	pthread_t *thread;
 	size_t i;
 	size_t thread_no_base = 1000;
@@ -128,7 +127,7 @@ void create_files_by_client() {
 		thread_data->content = malloc(content_lengt_client);
 		strncpy(thread_data->content, file_content_client, content_lengt_client);
 		if (pthread_create(thread, NULL, (void*) create_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			error(deep, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -140,16 +139,20 @@ void *update_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	info(deep, "Update file: %s", arg->filename);
 	char *update_msg = create_update_message(arg->filename, arg->content);
+	free(arg->filename);
+	free(arg->content);
+	free(arg);
 	char *response = send_message(update_msg);
 	free(update_msg);
 	if (strcmp(response, ANSWER_SUCCESS_UPDATE) != 0 && strcmp(response, ANSWER_FAILED_UPDATE) != 0) {
-		printf("UPDATE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_UPDATE, ANSWER_FAILED_UPDATE, response);
+		error(deep, "UPDATE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_UPDATE, ANSWER_FAILED_UPDATE, response);
 	}
 	free(response);
 	return (void *) NULL;
 }
 
 void update_files_by_client() {
+	int deep = 1;
 	pthread_t *thread;
 	size_t i;
 	size_t thread_no_base = 2000;
@@ -166,7 +169,7 @@ void update_files_by_client() {
 		thread_data->content = malloc(content_lengt_client);
 		strncpy(thread_data->content, file_content_client, content_lengt_client);
 		if (pthread_create(thread, NULL, (void*) update_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			error(deep, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -178,15 +181,19 @@ void *read_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	info(deep, "Read file: %s", arg->filename);
 	char *read_msg = create_read_message(arg->filename);
+	free(arg->filename);
+	free(arg);
 	char *response = send_message(read_msg);
 	free(read_msg);
 	if (strncmp(response, ANSWER_SUCCESS_READ, 12) != 0 && strcmp(response, ANSWER_FAILED_READ) != 0) {
-		printf("READ: expected: '%s...' or '%s' actual: '%s'\n", ANSWER_SUCCESS_READ, ANSWER_FAILED_READ, response);
+		error(deep, "READ: expected: '%s...' or '%s' actual: '%s'\n", ANSWER_SUCCESS_READ, ANSWER_FAILED_READ, response);
 	}
+	free(response);
 	return (void *) NULL;
 }
 
 void read_files_by_client() {
+	int deep = 1;
 	pthread_t *thread;
 	size_t i;
 	size_t thread_no_base = 3000;
@@ -201,7 +208,7 @@ void read_files_by_client() {
 		strncpy(thread_data->filename, filename, filename_lenght);
 		free(filename);
 		if (pthread_create(thread, NULL, (void*) read_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			error(deep, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -213,19 +220,21 @@ void *list_file_run(void *ptr) {
 	char *response = send_message(list_msg);
 	info(deep, "List files");
 	if (strncmp(response, ANSWER_SUCCESS_LIST, 4) != 0) {
-		printf("LIST: expected: '%s...' actual: '%s'\n", ANSWER_SUCCESS_LIST, response);
+		error(deep, "LIST: expected: '%s...' actual: '%s'\n", ANSWER_SUCCESS_LIST, response);
 	}
+	free(response);
 	return (void *) NULL;
 }
 
 void list_files_by_client() {
+	int deep = 1;
 	pthread_t *thread;
 	size_t i;
 	size_t thread_no_base = 4000;
 	for (i = 0; i < max_listing_test; i++) {
 		thread = (pthread_t *) malloc(sizeof(pthread_t));
 		if (pthread_create(thread, NULL, (void*) list_file_run, NULL) != 0) {
-			printf("Could not start thread %zu\n", i);
+			error(deep, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -237,15 +246,19 @@ void *delete_file_run(void *ptr) {
 	struct file_details *arg = (struct file_details *) ptr;
 	info(deep, "Delete file: %s", arg->filename);
 	char *delete_msg = create_delete_message(arg->filename);
+	free(arg->filename);
+	free(arg);
 	char *response = send_message(delete_msg);
 	free(delete_msg);
 	if (strcmp(response, ANSWER_SUCCESS_DELETE) != 0 && strcmp(response, ANSWER_FAILED_DELETE) != 0) {
-		printf("DELETE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_DELETE, ANSWER_FAILED_DELETE, response);
+		error(deep, "DELETE: expected: '%s' or '%s' actual: '%s'\n", ANSWER_SUCCESS_DELETE, ANSWER_FAILED_DELETE, response);
 	}
+	free(response);
 	return (void *) NULL;
 }
 
 void delete_files_by_client() {
+	int deep = 1;
 	pthread_t *thread;
 	size_t i;
 	size_t thread_no_base = 5000;
@@ -260,7 +273,7 @@ void delete_files_by_client() {
 		strncpy(thread_data->filename, filename, filename_lenght);
 		free(filename);
 		if (pthread_create(thread, NULL, (void*) delete_file_run, (void*) thread_data) != 0) {
-			printf("Could not start thread %zu\n", i);
+			error(deep, "Could not start thread %zu\n", i);
 		} else {
 			add_thread_element((i + thread_no_base), thread);
 		}
@@ -269,7 +282,6 @@ void delete_files_by_client() {
 
 int main(int argc, char *argv[]) {
 	int deep = 0;
-	install_segfault_handler();
 
 	set_log_lvl(INFO);
 	init_thread_linked_list(true);
@@ -285,5 +297,5 @@ int main(int argc, char *argv[]) {
 	info(deep, "Start %d threads, which remove a file", max_files_to_test);
 	delete_files_by_client();
 
-	stop_cleanup_threads();
+	destroy_thread_linked_list();
 }

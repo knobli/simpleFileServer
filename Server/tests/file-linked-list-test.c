@@ -93,6 +93,13 @@ void test_special_chars_list() {
 	CU_ASSERT_TRUE(delete_memory_file(filename_special_chars));
 }
 
+void test_destroy_list() {
+	CU_ASSERT_TRUE(add_memory_file(test_filename1, strlen(test_file1_content) + 1, test_file1_content));
+	CU_ASSERT_TRUE(add_memory_file(test_filename2, strlen(test_file2_content) + 1, test_file2_content));
+
+	CU_ASSERT_EQUAL(destroy_linked_list(), 2);
+}
+
 void file_list_test_suite() {
 	CU_pSuite file_list_suite = CU_add_suite("file_list", NULL, NULL);
 	CU_add_test(file_list_suite, "test_add_memory_file", test_add_memory_file);
@@ -102,4 +109,5 @@ void file_list_test_suite() {
 	CU_add_test(file_list_suite, "test_failure_cases", test_failure_cases_list);
 	CU_add_test(file_list_suite, "test_list_memory_files", test_list_memory_files);
 	CU_add_test(file_list_suite, "test_special_chars", test_special_chars_list);
+	CU_add_test(file_list_suite, "test_destroy_list", test_destroy_list);
 }

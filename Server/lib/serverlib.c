@@ -26,6 +26,7 @@
 #define ERROR_SIZE 4096
 
 void exit_by_type(enum exit_type et) {
+	int deep=1;
 	switch (et) {
 	case PROCESS_EXIT:
 		exit(1);
@@ -34,10 +35,10 @@ void exit_by_type(enum exit_type et) {
 		pthread_exit(NULL);
 		break;
 	case NO_EXIT:
-		printf("continuing\n");
+		debug(deep, "continuing\n");
 		break;
 	default:
-		printf("unknown exit_type=%d\n", et);
+		error(deep, "unknown exit_type=%d\n", et);
 		exit(2);
 		break;
 	}

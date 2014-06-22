@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -41,12 +42,13 @@ void *thread_cleanup_run(void *ptr) {
 }
 
 void stop_cleanup_threads() {
-	const int deep = 1;
+	const int deep = 2;
 	debug(deep, "Stop clean running threads");
 	clean_threads_flag = false;
 	if (cleanup_thread != NULL) {
 		pthread_join(*cleanup_thread, NULL);
 	}
+	free(cleanup_thread);
 }
 
 struct thread_element* create_thread_element(size_t thread_idx, pthread_t *thread) {
@@ -154,4 +156,18 @@ size_t cleanup_threads() {
 	}
 	info(deep, "Joined %zu thread(s)", threads_joined);
 	return threads_joined;
+}
+
+bool destroy_thread_linked_list(){
+	int deep = 1;
+	int returnCode;
+	stop_cleanup_threads();
+	returnCode=pthread_mutex_destroy(&head_thread_mutex);
+	handle_thread_error(returnCode, "Could not lock link mod mutex - cleanup", THREAD_EXIT);
+	debug(deep, "Reset head and end thread");
+	head_thread = NULL;
+	end_thread->prev = NULL;
+	free(end_thread->thread);
+	free(end_thread);
+	return true;
 }

@@ -16,7 +16,6 @@
 #include <CUnit/Basic.h>
 
 void *thread_run(void *ptr) {
-	printf("Thread started\n");
 	return (void *) NULL;
 }
 

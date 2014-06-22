@@ -115,7 +115,7 @@ bool make_log_msg(va_list args, const char* message, char **msg) {
 	char log_line[message_length];
 	size_t write_length;
 	if ((write_length = vsnprintf(log_line, message_length, message, args)) > message_length) {
-		printf("Error during vsnprintf size does not match (written: %zu max: %zu)!\n", write_length, message_length);
+		fprintf(stderr, "Error during vsnprintf size does not match (written: %zu max: %zu)!\n", write_length, message_length);
 		rv = false;
 	}
 	size_t msg_length = write_length + 1;
