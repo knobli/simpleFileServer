@@ -74,26 +74,21 @@ bool free_memory_file(struct memory_file *del, bool locking){
 		finest(deep, "Unlock rw mutex on %p - delete case", del);
 		returnCode = pthread_rwlock_unlock(&del->rwlock);
 		handle_thread_error(returnCode, "Could not unlock rw mutex - delete", THREAD_EXIT);
+
+		 finest(deep, "Lock link mod mutex on %p - delete case", del);
+		 returnCode = pthread_mutex_lock(&del->link_mod_mutex);
+		 handle_thread_error(returnCode, "Could not lock link mod mutex - delete", THREAD_EXIT);
+
+		 finest(deep, "Unlock link mod mutex on %p - delete case", del);
+		 returnCode = pthread_mutex_unlock(&del->link_mod_mutex);
+		 handle_thread_error(returnCode, "Could not unlock link mod mutex - delete", THREAD_EXIT);
 	}
-
-	/*
-	 * TODO: destroy mutex
-
-	 finest(deep, "Lock link mod mutex on %p - delete case", del);
-	 returnCode = pthread_mutex_lock(&del->link_mod_mutex);
-	 handle_thread_error(returnCode, "Could not lock link mod mutex - delete", THREAD_EXIT);
-
-	 finest(deep, "Unlock link mod mutex on %p - delete case", del);
-	 returnCode = pthread_mutex_unlock(&del->link_mod_mutex);
-	 handle_thread_error(returnCode, "Could not unlock link mod mutex - delete", THREAD_EXIT);
 
 	 returnCode = pthread_mutex_destroy(&del->link_mod_mutex);
 	 handle_thread_error(returnCode, "Could not destroy link mod mutex - delete", THREAD_EXIT);
 
 	 returnCode = pthread_rwlock_destroy(&del->rwlock);
 	 handle_thread_error(returnCode, "Could not destroy rw mutex - delete", THREAD_EXIT);
-
-	 */
 
 	debug(deep, "Free filename");
 	free(del->filename);
