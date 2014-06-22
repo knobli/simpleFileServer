@@ -16,7 +16,6 @@
 #include <pthread.h>
 
 #define MAX_MSG_LEN 4096
-//TODO: all debug and other output to stderr
 
 static size_t LOG_LEVEL = INFO;
 
@@ -84,7 +83,8 @@ void log_msg(const char* tag, int deep, char* message) {
 		strncpy(message, tmp_string, tmp_length);
 		free(tmp_string);
 	}
-	printf("%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
+	//printf("%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
+	fprintf(stderr, "%ld %s [%s]: %s\n", thread_id, timestamp, tag, message);
 	free(message);
 }
 
