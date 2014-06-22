@@ -1,8 +1,8 @@
-/* (C) IT Sky Consulting GmbH 2014
- * http://www.it-sky-consulting.com/
- * Author: Karl Brodowsky
- * Date: 2014-02-27
- * License: GPL v2 (See https://de.wikipedia.org/wiki/GNU_General_Public_License )
+/*
+ * transmission-protocols.c
+ *
+ *  Created on: 17.05.2014
+ *      Author: knobli
  */
 
 #ifndef _PROTOCOL_H

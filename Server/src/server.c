@@ -5,7 +5,6 @@
  *      Author: knobli
  */
 
-//#include <assert.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <pthread.h>

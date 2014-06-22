@@ -47,9 +47,6 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 	debug(deep, "Init link mod mutex");
 	pthread_mutex_t mutex;
 	memset(&mutex, 0, sizeof(mutex)); /* Zero out structure */
-	/* pthread_mutexattr_t psharedm;
-	 pthread_mutexattr_init(&psharedm);
-	 pthread_mutexattr_setpshared(&psharedm, PTHREAD_MUTEX_ERRORCHECK); */
 	returnCode = pthread_mutex_init(&mutex, NULL);
 	handle_thread_error(returnCode, "Could not init link mod mutex", THREAD_EXIT);
 	file->link_mod_mutex = mutex;
@@ -57,9 +54,6 @@ struct memory_file* create_memory_file(const char *filename, const int length, c
 	debug(deep, "Init rwlock mutex");
 	pthread_rwlock_t rwlock;
 	memset(&rwlock, 0, sizeof(rwlock)); /* Zero out structure */
-	/*	pthread_rwlockattr_t rwlock_attr;
-	 pthread_rwlockattr_init(&rwlock_attr);
-	 pthread_rwlockattr_setpshared(&rwlock_attr, PTHREAD_MUTEX_ERRORCHECK); */
 	returnCode = pthread_rwlock_init(&rwlock, NULL);
 	handle_thread_error(returnCode, "Could not init rwlock mutex", THREAD_EXIT);
 	file->rwlock = rwlock;

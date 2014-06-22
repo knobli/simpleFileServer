@@ -1,13 +1,8 @@
-/* (C) IT Sky Consulting GmbH 2014
- * http://www.it-sky-consulting.com/
- * Author: Karl Brodowsky
- * Date: 2014-02-27
- * License: GPL v2 (See https://de.wikipedia.org/wiki/GNU_General_Public_License )
- */
-
 /*
- * library functions for transmission of strings through pipes, sockets and the like.
- * Just as an example how this could be achieved...
+ * transmission-protocols.c
+ *
+ *  Created on: 17.05.2014
+ *      Author: knobli
  */
 
 #include <arpa/inet.h>  /* for sockaddr_in and inet_addr() and inet_ntoa() */
@@ -27,15 +22,6 @@
 
 const char *EMPTY_BUFFER = "";
 
-/* transmit a string over a socket or pipe connnection
- * if len is given it is assumed to be the lenght of the string
- * if it is -1, the length is found out with strlen()
- * The length of string is transmitted first as 4 byte unsigned integer,
- * followed by the string itself.
- * @param client_socket  a socket or pipe.  Could be a file also.
- * @param str string to be transmitted
- * @param len length of string to be transmitted
- */
 void write_string(int client_socket, char *str) {
 	const int deep = 2;
 	int len = strlen(str);
@@ -53,7 +39,6 @@ void write_eot(int client_socket) {
 	write_string(client_socket, "");
 }
 
-/* the caller has to free the buffer, unless ulen == 0 */
 size_t read_and_store_string(int client_socket, char **result) {
 	const int deep = 2;
 	char buffer[MAX_MESSAGE_LEN + 1];
@@ -256,7 +241,6 @@ char *list_files(const char *msg) {
 	char *file_list;
 	int file_counter = list_memory_file(&file_list);
 
-	//debug(deep, "Output from list method: %s", file_list);
 	char str[15];
 	sprintf(str, "%d", file_counter);
 	char *rv_wit_num;
