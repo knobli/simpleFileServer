@@ -29,9 +29,8 @@
 #define ANSWER_UNKOWN "UNKOWN COMMAND\n"
 #define ANSWER_INTERNAL_ERROR "INTERNAL ERROR\n"
 
-#define MAX_MESSAGE_LEN 2500
-
-typedef void (*consumer_function)(const char *buff, size_t count);
+#define MAX_MESSAGE_LEN 4096
+#define MAX_LENGTH_NUM 5
 
 void write_string(int client_socket, char *str);
 

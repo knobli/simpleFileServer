@@ -20,6 +20,7 @@ public class Protocol {
 	public static final String ANSWER_SUCCESS_DELETE = "DELETED";
 	
 	public static final String ANSWER_UNKOWN = "UNKOWN";
+	public static final String ANSWER_INVALID = "INPUT INVALID";
 	
 	@ProtocolAnnotation(action=ActionType.LIST)
 	public static final String ANSWER_REGEX_SUCCESS_LIST = ANSWER_SUCCESS_LIST + "\\s+[\\d]+";

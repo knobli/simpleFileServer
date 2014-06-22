@@ -9,6 +9,7 @@
 #include <string.h>
 #include <regex.h>
 
+#include <transmission-protocols.h>
 #include <regex-handle.h>
 #include <logger.h>
 
@@ -69,11 +70,11 @@ int match_regex(regex_t * r, const char * to_match, char *filename, char *length
 			start = m[i].rm_so + (p - to_match);
 			finish = m[i].rm_eo + (p - to_match);
 			if (i == 1) {
-				sprintf(filename, "%.*s", (finish - start), to_match + start);
+				snprintf(filename, MAX_MESSAGE_LEN, "%.*s", (finish - start), to_match + start);
 			} else if (i == 2) {
-				sprintf(length, "%.*s", (finish - start), to_match + start);
+				snprintf(length, MAX_LENGTH_NUM, "%.*s", (finish - start), to_match + start);
 			} else if (i == 3) {
-				sprintf(content, "%.*s", (finish - start), to_match + start);
+				snprintf(content, MAX_MESSAGE_LEN, "%.*s", (finish - start), to_match + start);
 			}
 		}
 		p += m[0].rm_eo;

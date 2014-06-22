@@ -97,9 +97,9 @@ char *select_strategy(const char *msg) {
 char *create_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
-	char filename[4096];
-	char org_length_str[5];
-	char content[4096];
+	char filename[MAX_MESSAGE_LEN + 1];
+	char org_length_str[MAX_LENGTH_NUM + 1];
+	char content[MAX_MESSAGE_LEN + 1];
 
 	const char * create_regex_text = "CREATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
 	compile_regex(&r, create_regex_text);
@@ -117,7 +117,7 @@ char *create_file(const char *msg) {
 	info(deep, "Create file %s", filename);
 	int length = strlen(content) + 1;
 	if (length != orig_length) {
-		error(deep, "Message length is not correct!");
+		error(deep, "Message length is not correct! (length: %d, original: %d)", length, orig_length);
 		return ANSWER_INVALID;
 	}
 
@@ -132,9 +132,9 @@ char *create_file(const char *msg) {
 char *update_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
-	char filename[4096];
-	char org_length_str[5];
-	char content[4096];
+	char filename[MAX_MESSAGE_LEN + 1];
+	char org_length_str[MAX_LENGTH_NUM + 1];
+	char content[MAX_MESSAGE_LEN + 1];
 
 	const char *update_regex_text = "UPDATE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:blank:]]+([[:digit:]]+)[[:cntrl:]]+([[:graph:]|[:blank:]]+)";
 	compile_regex(&r, update_regex_text);
@@ -164,7 +164,7 @@ char *update_file(const char *msg) {
 char *delete_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
-	char filename[4096];
+	char filename[MAX_MESSAGE_LEN + 1];
 
 	const char *delete_regex_text = "DELETE[[:blank:]]+([[:graph:]|[:blank:]]+)[[:cntrl:]]+";
 	compile_regex(&r, delete_regex_text);
@@ -185,7 +185,7 @@ char *delete_file(const char *msg) {
 char *read_file(const char *msg) {
 	const int deep = 2;
 	regex_t r;
-	char filename[4096];
+	char filename[MAX_MESSAGE_LEN + 1];
 	char *returnValue;
 
 	const char *read_regex_text = "READ[[:blank:]]+([[:graph:]|[:blank:]]+)[[:cntrl:]]+";
